@@ -33,14 +33,12 @@ export async function SiteHeader() {
             <Link href="/apply" className="hover:text-safety">
               신청
             </Link>
+            <Link href="/checkin" className="hover:text-safety">
+              급식확인
+            </Link>
             <Link href="/my" className="hover:text-safety">
               신청확인
             </Link>
-            {admin && (
-              <Link href="/checkin" className="hover:text-safety">
-                급식확인
-              </Link>
-            )}
             {admin && (
               <Link href="/admin" className="hover:text-safety">
                 관리자

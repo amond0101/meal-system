@@ -92,6 +92,14 @@ export default async function Home() {
           </Link>
         </Card>
 
+        <Card>
+          <SectionLabel>급식확인</SectionLabel>
+          <p className="text-sm text-ink-soft">오늘 급식 메뉴와 내 신청 상태를 확인하세요.</p>
+          <Link href="/checkin" className="mt-3 inline-block text-sm text-steel underline underline-offset-2">
+            급식확인 보기 →
+          </Link>
+        </Card>
+
         {admin && (
           <Card>
             <SectionLabel>오늘 체크인 현황</SectionLabel>
@@ -103,8 +111,8 @@ export default async function Home() {
             ) : (
               <p className="text-sm text-ink-soft">오늘은 수요석식이 없습니다.</p>
             )}
-            <Link href="/checkin" className="mt-3 inline-block text-sm text-steel underline underline-offset-2">
-              급식확인 페이지로 →
+            <Link href="/checkin/scan" className="mt-3 inline-block text-sm text-steel underline underline-offset-2">
+              QR 체크인으로 →
             </Link>
           </Card>
         )}
