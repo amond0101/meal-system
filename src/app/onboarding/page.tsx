@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
-import { claimRosterEntry } from "./actions";
+import { claimStudentNo } from "./actions";
 import { parseStudentNoFromEmail } from "@/lib/student-no";
 import { btnPrimary } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
@@ -24,7 +24,7 @@ export default async function OnboardingPage({
           학번 확인
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
-          학생증에 적힌 고유 학번을 입력해 본인 정보를 연결해주세요.
+          학번 5자리(예: 21105 = 2학년 11반 5번)를 확인해주세요.
         </p>
       </div>
 
@@ -35,15 +35,17 @@ export default async function OnboardingPage({
       )}
 
       <form
-        action={claimRosterEntry}
+        action={claimStudentNo}
         className="flex flex-col gap-3 rounded-sm border border-rivet-line bg-paper-raised p-4 shadow-sm"
       >
         <input
           name="student_no"
           type="text"
           defaultValue={suggestedStudentNo ?? ""}
-          placeholder="학번 (학생증 고유번호)"
+          placeholder="학번 5자리 (예: 21105)"
           required
+          pattern="\d{5}"
+          title="숫자 5자리"
           className="rounded-sm border border-rivet px-3 py-2 font-mono text-sm"
         />
         {suggestedStudentNo && (

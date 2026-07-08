@@ -28,6 +28,7 @@ export default async function UsersAdminPage() {
               <th className="py-2">이름</th>
               <th className="py-2">이메일</th>
               <th className="py-2">학번</th>
+              <th className="py-2">학년/반</th>
               <th className="py-2">역할</th>
             </tr>
           </thead>
@@ -37,6 +38,7 @@ export default async function UsersAdminPage() {
                 <td className="py-2">{p.name}</td>
                 <td className="py-2 font-mono text-xs text-ink-soft">{p.email}</td>
                 <td className="py-2 font-mono">{p.student_no ?? "-"}</td>
+                <td className="py-2">{p.grade && p.class ? `${p.grade}학년 ${p.class}반` : "-"}</td>
                 <td className="py-2">
                   <form action={updateRole.bind(null, p.id)} className="flex items-center gap-2">
                     <select name="role" defaultValue={p.role} className="rounded-sm border border-rivet px-2 py-1">

@@ -151,63 +151,34 @@ export type Database = {
       }
       profiles: {
         Row: {
+          class: number | null
           created_at: string
           email: string
+          grade: number | null
           id: string
           name: string
           role: Database["public"]["Enums"]["user_role"]
           student_no: string | null
         }
         Insert: {
+          class?: number | null
           created_at?: string
           email: string
+          grade?: number | null
           id: string
           name: string
           role?: Database["public"]["Enums"]["user_role"]
           student_no?: string | null
         }
         Update: {
+          class?: number | null
           created_at?: string
           email?: string
+          grade?: number | null
           id?: string
           name?: string
           role?: Database["public"]["Enums"]["user_role"]
           student_no?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_student_no_fkey"
-            columns: ["student_no"]
-            isOneToOne: false
-            referencedRelation: "roster"
-            referencedColumns: ["student_no"]
-          },
-        ]
-      }
-      roster: {
-        Row: {
-          claimed_by: string | null
-          class: number
-          created_at: string
-          grade: number
-          name: string
-          student_no: string
-        }
-        Insert: {
-          claimed_by?: string | null
-          class: number
-          created_at?: string
-          grade: number
-          name: string
-          student_no: string
-        }
-        Update: {
-          claimed_by?: string | null
-          class?: number
-          created_at?: string
-          grade?: number
-          name?: string
-          student_no?: string
         }
         Relationships: []
       }
@@ -228,7 +199,6 @@ export type Database = {
           student_name: string
         }[]
       }
-      claim_roster_entry: { Args: { p_student_no: string }; Returns: undefined }
       close_dinner: { Args: { p_dinner_id: string }; Returns: number }
       close_dinner_internal: { Args: { p_dinner_id: string }; Returns: number }
       schedule_open_dinner: { Args: never; Returns: string }

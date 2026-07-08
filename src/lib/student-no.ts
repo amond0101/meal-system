@@ -6,3 +6,11 @@ export function parseStudentNoFromEmail(email: string): string | null {
   if (!/^\d{9}$/.test(local)) return null;
   return local.slice(4);
 }
+
+export function parseGradeClassFromStudentNo(studentNo: string): { grade: number; class: number } | null {
+  if (!/^\d{5}$/.test(studentNo)) return null;
+  return {
+    grade: Number(studentNo.slice(0, 1)),
+    class: Number(studentNo.slice(1, 3)),
+  };
+}
