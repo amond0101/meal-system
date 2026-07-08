@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { fetchNeisDinnerMenu } from "@/lib/neis";
 import { PageTitle, StatusBadge } from "@/components/ui";
+import { QrLightbox } from "@/components/qr-lightbox";
 
 function ticketCode(qrToken: string) {
   return qrToken.slice(0, 8).toUpperCase().match(/.{1,4}/g)?.join("-") ?? qrToken;
@@ -15,28 +16,27 @@ export default async function MyPage() {
 
   const supabase = await createClient();
 
-  const { data: applications } = await supabase
-    .from("applications")
-    .select("*, dinners(date)")
-    .eq("student_id", profile.id)
-    .order("applied_at", { ascending: false });
-
-  const { data: demerits } = await supabase
-    .from("demerits")
-    .select("points")
-    .eq("student_id", profile.id);
+  const [{ data: applications }, { data: demerits }] = await Promise.all([
+    supabase
+      .from("applications")
+      .select("*, dinners(date)")
+      .eq("student_id", profile.id)
+      .order("applied_at", { ascending: false }),
+    supabase.from("demerits").select("points").eq("student_id", profile.id),
+  ]);
 
   const totalDemerits = demerits?.reduce((sum, d) => sum + d.points, 0) ?? 0;
 
   const withQr = await Promise.all(
-    (applications ?? []).map(async (app) => ({
-      ...app,
-      menu: app.dinners?.date ? await fetchNeisDinnerMenu(app.dinners.date) : null,
-      qrDataUrl:
+    (applications ?? []).map(async (app) => {
+      const [menu, qrDataUrl] = await Promise.all([
+        app.dinners?.date ? fetchNeisDinnerMenu(app.dinners.date) : Promise.resolve(null),
         app.status === "applied"
-          ? await QRCode.toDataURL(app.qr_token, { margin: 0, color: { dark: "#1c2321", light: "#00000000" } })
-          : null,
-    }))
+          ? QRCode.toDataURL(app.qr_token, { margin: 0, color: { dark: "#1c2321", light: "#00000000" } })
+          : Promise.resolve(null),
+      ]);
+      return { ...app, menu, qrDataUrl };
+    })
   );
 
   return (
@@ -72,12 +72,9 @@ export default async function MyPage() {
 
             {app.qrDataUrl ? (
               <div className="ticket-perforation flex w-32 flex-col items-center justify-center gap-1 bg-paper p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={app.qrDataUrl} alt="체크인용 QR 코드" className="h-20 w-20" />
+                <QrLightbox src={app.qrDataUrl} alt="체크인용 QR 코드" />
                 <p className="text-center font-mono text-[10px] leading-tight text-ink-soft">
-                  급식 수령 시
-                  <br />
-                  제시하세요
+                  탭하면 확대 · 급식 수령 시 제시
                 </p>
               </div>
             ) : (

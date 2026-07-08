@@ -6,6 +6,7 @@ import { closeDinner } from "./actions";
 import { Card, PageTitle, SectionLabel, StatusBadge, btnDanger } from "@/components/ui";
 import { DinnerForm } from "./dinner-form";
 import { AutomationTestPanel } from "./automation-test-panel";
+import { SubmitButton } from "@/components/submit-button";
 
 function nextWednesday() {
   const d = new Date();
@@ -31,25 +32,26 @@ export default async function DinnersAdminPage({
     .order("date", { ascending: false });
 
   const dinnerStats = new Map<string, { applied: number; checked_in: number; no_show: number }>();
-  if (dinners && dinners.length > 0) {
-    const { data: apps } = await supabase
-      .from("applications")
-      .select("dinner_id, status")
-      .in("dinner_id", dinners.map((d) => d.id));
-    for (const app of apps ?? []) {
-      const s = dinnerStats.get(app.dinner_id) ?? { applied: 0, checked_in: 0, no_show: 0 };
-      if (app.status === "applied") s.applied++;
-      if (app.status === "checked_in") s.checked_in++;
-      if (app.status === "no_show") s.no_show++;
-      dinnerStats.set(app.dinner_id, s);
-    }
+
+  const [appsResult, menuEntries] = await Promise.all([
+    dinners && dinners.length > 0
+      ? supabase
+          .from("applications")
+          .select("dinner_id, status")
+          .in("dinner_id", dinners.map((d) => d.id))
+      : Promise.resolve({ data: null }),
+    Promise.all((dinners ?? []).map(async (d) => [d.date, await fetchNeisDinnerMenu(d.date)] as const)),
+  ]);
+
+  for (const app of appsResult.data ?? []) {
+    const s = dinnerStats.get(app.dinner_id) ?? { applied: 0, checked_in: 0, no_show: 0 };
+    if (app.status === "applied") s.applied++;
+    if (app.status === "checked_in") s.checked_in++;
+    if (app.status === "no_show") s.no_show++;
+    dinnerStats.set(app.dinner_id, s);
   }
 
-  const menuByDate = new Map(
-    await Promise.all(
-      (dinners ?? []).map(async (d) => [d.date, await fetchNeisDinnerMenu(d.date)] as const)
-    )
-  );
+  const menuByDate = new Map(menuEntries);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -92,7 +94,9 @@ export default async function DinnersAdminPage({
                   </div>
                   {dinner.status === "open" && (
                     <form action={closeDinner.bind(null, dinner.id)}>
-                      <button className={btnDanger}>마감 처리(노쇼 벌점 부여)</button>
+                      <SubmitButton className={btnDanger} pendingText="처리 중…">
+                        마감 처리(노쇼 벌점 부여)
+                      </SubmitButton>
                     </form>
                   )}
                 </div>

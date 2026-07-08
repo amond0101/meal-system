@@ -3,6 +3,7 @@ import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { bulkUpsertRoster, deleteRosterEntry } from "./actions";
 import { Card, PageTitle, SectionLabel, btnSteel } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function RosterAdminPage({
   searchParams,
@@ -45,7 +46,9 @@ export default async function RosterAdminPage({
             required
             className="rounded-sm border border-rivet px-3 py-2 font-mono text-sm"
           />
-          <button className={`${btnSteel} self-start`}>등록</button>
+          <SubmitButton className={`${btnSteel} self-start`} pendingText="등록 중…">
+            등록
+          </SubmitButton>
         </form>
       </Card>
 

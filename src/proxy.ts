@@ -24,9 +24,15 @@ export async function proxy(request: NextRequest) {
     }
   );
 
+  // getSession() reads the JWT from cookies with no network round trip (unlike
+  // getUser(), which always calls the Auth server). Middleware only uses this
+  // for redirect routing, not as the real security boundary — every actual
+  // data query is enforced by RLS, and getProfile() calls the fully-validated
+  // getUser() again when a page renders.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   const isPublicPath =
     request.nextUrl.pathname.startsWith("/login") ||

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { upsertDinner } from "./actions";
 import { btnSteel } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
 
 export function DinnerForm({ defaultDate }: { defaultDate: string }) {
   const [date, setDate] = useState(defaultDate);
@@ -33,7 +34,9 @@ export function DinnerForm({ defaultDate }: { defaultDate: string }) {
           className="rounded-sm border border-rivet px-2 py-1 font-mono"
         />
       </label>
-      <button className={`${btnSteel} self-start`}>저장</button>
+      <SubmitButton className={`${btnSteel} self-start`} pendingText="저장 중…">
+        저장
+      </SubmitButton>
     </form>
   );
 }

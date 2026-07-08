@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { claimRosterEntry } from "./actions";
+import { parseStudentNoFromEmail } from "@/lib/student-no";
 import { btnPrimary } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function OnboardingPage({
   searchParams,
@@ -13,6 +15,7 @@ export default async function OnboardingPage({
   if (profile.student_no) redirect("/");
 
   const { error } = await searchParams;
+  const suggestedStudentNo = parseStudentNoFromEmail(profile.email);
 
   return (
     <div className="mx-auto flex min-h-[80vh] max-w-sm flex-col justify-center gap-6 px-4">
@@ -38,11 +41,19 @@ export default async function OnboardingPage({
         <input
           name="student_no"
           type="text"
+          defaultValue={suggestedStudentNo ?? ""}
           placeholder="학번 (학생증 고유번호)"
           required
           className="rounded-sm border border-rivet px-3 py-2 font-mono text-sm"
         />
-        <button className={btnPrimary}>확인</button>
+        {suggestedStudentNo && (
+          <p className="text-xs text-ink-soft">
+            학교 이메일에서 자동으로 채워드렸어요. 다르면 직접 수정해주세요.
+          </p>
+        )}
+        <SubmitButton className={btnPrimary} pendingText="확인 중…">
+          확인
+        </SubmitButton>
       </form>
     </div>
   );

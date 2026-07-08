@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchNeisDinnerMenu } from "@/lib/neis";
 import { applyToDinner } from "./actions";
 import { Card, PageTitle, StatusBadge, btnPrimary } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function ApplyPage() {
   const profile = await getProfile();
@@ -12,17 +13,15 @@ export default async function ApplyPage() {
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data: dinners } = await supabase
-    .from("dinners")
-    .select("*")
-    .eq("status", "open")
-    .gte("date", today)
-    .order("date", { ascending: true });
-
-  const { data: myApps } = await supabase
-    .from("applications")
-    .select("*")
-    .eq("student_id", profile.id);
+  const [{ data: dinners }, { data: myApps }] = await Promise.all([
+    supabase
+      .from("dinners")
+      .select("*")
+      .eq("status", "open")
+      .gte("date", today)
+      .order("date", { ascending: true }),
+    supabase.from("applications").select("*").eq("student_id", profile.id),
+  ]);
 
   const appMap = new Map(myApps?.map((a) => [a.dinner_id, a]));
 
@@ -60,7 +59,9 @@ export default async function ApplyPage() {
                   <span className="text-sm text-ink-soft">마감되었습니다.</span>
                 ) : (
                   <form action={applyToDinner.bind(null, dinner.id)}>
-                    <button className={btnPrimary}>신청하기</button>
+                    <SubmitButton className={btnPrimary} pendingText="신청 중…">
+                      신청하기
+                    </SubmitButton>
                   </form>
                 )}
               </div>

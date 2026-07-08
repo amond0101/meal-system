@@ -22,30 +22,34 @@ export default async function Home() {
     .limit(1)
     .maybeSingle();
 
-  const upcomingMenu = upcoming ? await fetchNeisDinnerMenu(upcoming.date) : null;
+  const wantsTodayStats = staff && upcoming?.date === today;
 
-  let myApplication = null;
-  if (upcoming) {
-    const { data } = await supabase
-      .from("applications")
-      .select("status")
-      .eq("dinner_id", upcoming.id)
-      .eq("student_id", profile.id)
-      .maybeSingle();
-    myApplication = data;
-  }
+  const [upcomingMenu, myApplication, todayApps] = upcoming
+    ? await Promise.all([
+        fetchNeisDinnerMenu(upcoming.date),
+        supabase
+          .from("applications")
+          .select("status")
+          .eq("dinner_id", upcoming.id)
+          .eq("student_id", profile.id)
+          .maybeSingle()
+          .then((r) => r.data),
+        wantsTodayStats
+          ? supabase
+              .from("applications")
+              .select("status")
+              .eq("dinner_id", upcoming.id)
+              .then((r) => r.data)
+          : Promise.resolve(null),
+      ])
+    : [null, null, null];
 
-  let todayStats: { applied: number; checked_in: number } | null = null;
-  if (staff && upcoming?.date === today) {
-    const { data: apps } = await supabase
-      .from("applications")
-      .select("status")
-      .eq("dinner_id", upcoming.id);
-    todayStats = {
-      applied: apps?.filter((a) => a.status === "applied" || a.status === "checked_in").length ?? 0,
-      checked_in: apps?.filter((a) => a.status === "checked_in").length ?? 0,
-    };
-  }
+  const todayStats = todayApps
+    ? {
+        applied: todayApps.filter((a) => a.status === "applied" || a.status === "checked_in").length,
+        checked_in: todayApps.filter((a) => a.status === "checked_in").length,
+      }
+    : null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
