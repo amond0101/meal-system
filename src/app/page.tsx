@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getProfile, isStaff, isAdmin } from "@/lib/profile";
+import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { fetchNeisDinnerMenu } from "@/lib/neis";
 import { Card, SectionLabel, StatusBadge } from "@/components/ui";
@@ -10,7 +10,6 @@ export default async function Home() {
   if (!profile) redirect("/login");
 
   const supabase = await createClient();
-  const staff = isStaff(profile);
   const admin = isAdmin(profile);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -22,7 +21,7 @@ export default async function Home() {
     .limit(1)
     .maybeSingle();
 
-  const wantsTodayStats = staff && upcoming?.date === today;
+  const wantsTodayStats = admin && upcoming?.date === today;
 
   const [upcomingMenu, myApplication, todayApps] = upcoming
     ? await Promise.all([
@@ -93,7 +92,7 @@ export default async function Home() {
           </Link>
         </Card>
 
-        {staff && (
+        {admin && (
           <Card>
             <SectionLabel>오늘 체크인 현황</SectionLabel>
             {todayStats ? (

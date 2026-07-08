@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getProfile, isStaff } from "@/lib/profile";
+import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { fetchNeisDinnerMenu } from "@/lib/neis";
 import { QrScanner } from "@/components/qr-scanner";
@@ -16,7 +16,7 @@ function CounterDigit({ value, label }: { value: number; label: string }) {
 
 export default async function CheckinPage() {
   const profile = await getProfile();
-  if (!isStaff(profile)) redirect("/");
+  if (!isAdmin(profile)) redirect("/");
 
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);

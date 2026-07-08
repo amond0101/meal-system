@@ -1,9 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 
 export async function checkInToken(qrToken: string) {
+  const profile = await getProfile();
+  if (!isAdmin(profile)) {
+    return { ok: false as const, message: "관리자만 체크인할 수 있습니다." };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("check_in_application", {
     p_qr_token: qrToken.trim(),

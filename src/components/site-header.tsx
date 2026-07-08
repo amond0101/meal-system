@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getProfile, isStaff, isAdmin } from "@/lib/profile";
+import { getProfile, isAdmin } from "@/lib/profile";
 import { signOut } from "@/app/login/actions";
 
 const roleLabel: Record<string, string> = {
@@ -16,7 +16,6 @@ export async function SiteHeader() {
   const profile = await getProfile();
   if (!profile) return null;
 
-  const staff = isStaff(profile);
   const admin = isAdmin(profile);
 
   return (
@@ -37,7 +36,7 @@ export async function SiteHeader() {
             <Link href="/my" className="hover:text-safety">
               신청확인
             </Link>
-            {staff && (
+            {admin && (
               <Link href="/checkin" className="hover:text-safety">
                 급식확인
               </Link>
