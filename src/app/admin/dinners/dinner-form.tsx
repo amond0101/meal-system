@@ -1,0 +1,39 @@
+"use client";
+
+import { useState } from "react";
+import { upsertDinner } from "./actions";
+import { btnSteel } from "@/components/ui";
+
+export function DinnerForm({ defaultDate }: { defaultDate: string }) {
+  const [date, setDate] = useState(defaultDate);
+
+  return (
+    <form action={upsertDinner} className="flex flex-col gap-3">
+      <label className="flex flex-col gap-1 text-sm">
+        날짜
+        <input
+          name="date"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          required
+          className="rounded-sm border border-rivet px-2 py-1 font-mono"
+        />
+      </label>
+      <p className="text-xs text-ink-soft">
+        메뉴는 직접 입력하지 않습니다. 신청/신청확인/급식확인 화면에 이 날짜의 NEIS 석식 정보가 실시간으로 표시됩니다.
+      </p>
+
+      <label className="flex flex-col gap-1 text-sm">
+        신청 마감 시각
+        <input
+          name="application_deadline"
+          type="datetime-local"
+          required
+          className="rounded-sm border border-rivet px-2 py-1 font-mono"
+        />
+      </label>
+      <button className={`${btnSteel} self-start`}>저장</button>
+    </form>
+  );
+}

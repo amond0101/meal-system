@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --paper: #eef0f1;
+  --paper-raised: #ffffff;
+  --ink: #1c2321;
+  --ink-soft: #4a5459;
+  --steel: #3c5a6b;
+  --steel-dark: #24404e;
+  --safety: #f2a900;
+  --safety-ink: #5c3d00;
+  --rivet: #9aa3ab;
+  --rivet-line: #d3d8db;
+  --danger: #c6412c;
+  --success: #2f6b4f;
+}
+
+/* Dark mode intentionally disabled: native form controls (select/input) pick up
+   OS-level dark rendering independently of our light palette, which produced
+   invisible/overlapping text. Pinning color-scheme keeps every control light. */
+html {
+  color-scheme: light only;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-steel: var(--steel);
+  --color-steel-dark: var(--steel-dark);
+  --color-safety: var(--safety);
+  --color-safety-ink: var(--safety-ink);
+  --color-rivet: var(--rivet);
+  --color-rivet-line: var(--rivet-line);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --font-display: var(--font-oswald);
+  --font-body: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), Arial, Helvetica, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--steel);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Ticket stub: perforated edge between the info panel and the QR stub,
+   like a physical meal ticket torn along a dashed line. */
+.ticket-perforation {
+  position: relative;
+  border-left: 2px dashed var(--rivet-line);
+}
+.ticket-perforation::before,
+.ticket-perforation::after {
+  content: "";
+  position: absolute;
+  left: -9px;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--paper);
+  border: 2px solid var(--rivet-line);
+}
+.ticket-perforation::before {
+  top: -10px;
+}
+.ticket-perforation::after {
+  bottom: -10px;
+}
+
+/* Odometer-style digit plate for the check-in counter. */
+.counter-plate {
+  background: var(--ink);
+  color: #fbf7ec;
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
