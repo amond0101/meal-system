@@ -8,6 +8,7 @@ export default async function AdminHome() {
   if (!isAdmin(profile)) redirect("/");
 
   const links = [
+    { href: "/checkin", label: "급식확인 (QR 인식)", desc: "QR 스캔으로 체크인 처리, 오늘 체크인 현황" },
     { href: "/admin/dinners", label: "회차 관리", desc: "수요석식 회차 생성/수정, 마감 처리" },
     { href: "/admin/roster", label: "명부 관리", desc: "학생 명부 등록/삭제" },
     { href: "/admin/users", label: "사용자 관리", desc: "역할(학생/담당교사/관리자) 변경" },
