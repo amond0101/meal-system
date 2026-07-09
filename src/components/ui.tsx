@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-sm border border-rivet-line bg-paper-raised p-4 shadow-sm ${className}`}>
+    <div
+      className={`card-elevate rounded-sm border border-rivet-line bg-paper-raised p-4 shadow-sm ${className}`}
+    >
       {children}
     </div>
   );
@@ -22,7 +24,8 @@ export function PageTitle({ children, sub }: { children: ReactNode; sub?: ReactN
       <h1 className="font-display text-2xl font-semibold uppercase tracking-wide text-ink">
         {children}
       </h1>
-      {sub && <p className="mt-1 text-sm text-ink-soft">{sub}</p>}
+      <div className="mt-2 h-1 w-10 rounded-full bg-safety" aria-hidden />
+      {sub && <p className="mt-2 text-sm text-ink-soft">{sub}</p>}
     </div>
   );
 }
@@ -48,7 +51,7 @@ const statusText: Record<string, string> = {
 export function StatusBadge({ status, label }: { status: string; label?: string }) {
   return (
     <span
-      className={`inline-block -rotate-2 rounded-sm border-2 px-2 py-0.5 font-display text-xs font-semibold uppercase tracking-wider ${
+      className={`stamp inline-block rounded-sm border-2 px-2 py-0.5 font-display text-xs font-semibold uppercase tracking-wider ${
         statusStyle[status] ?? "border-rivet text-ink-soft"
       }`}
     >
@@ -58,10 +61,10 @@ export function StatusBadge({ status, label }: { status: string; label?: string 
 }
 
 export const btnPrimary =
-  "rounded-sm bg-safety px-4 py-2 font-display text-sm font-semibold uppercase tracking-wide text-safety-ink hover:brightness-95";
+  "pressable rounded-sm bg-safety px-4 py-2 font-display text-sm font-semibold uppercase tracking-wide text-safety-ink hover:brightness-95";
 export const btnSteel =
-  "rounded-sm bg-steel px-4 py-2 font-display text-sm font-semibold uppercase tracking-wide text-white hover:bg-steel-dark";
+  "pressable rounded-sm bg-steel px-4 py-2 font-display text-sm font-semibold uppercase tracking-wide text-white hover:bg-steel-dark";
 export const btnOutline =
-  "rounded-sm border border-rivet px-3 py-1.5 text-sm text-ink hover:bg-paper";
+  "pressable rounded-sm border border-rivet px-3 py-1.5 text-sm text-ink hover:bg-paper";
 export const btnDanger =
-  "rounded-sm border border-danger px-3 py-1.5 text-sm text-danger hover:bg-danger/10";
+  "pressable rounded-sm border border-danger px-3 py-1.5 text-sm text-danger hover:bg-danger/10";

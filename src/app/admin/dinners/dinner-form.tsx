@@ -21,10 +21,6 @@ export function DinnerForm({ defaultDate }: { defaultDate: string }) {
           className="rounded-sm border border-rivet px-2 py-1 font-mono"
         />
       </label>
-      <p className="text-xs text-ink-soft">
-        메뉴는 직접 입력하지 않습니다. 신청/신청확인/급식확인 화면에 이 날짜의 NEIS 석식 정보가 실시간으로 표시됩니다.
-      </p>
-
       <label className="flex flex-col gap-1 text-sm">
         신청 마감 시각
         <input

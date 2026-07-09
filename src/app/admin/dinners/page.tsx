@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
-import { fetchNeisDinnerMenu } from "@/lib/neis";
 import { closeDinner } from "./actions";
 import { Card, PageTitle, SectionLabel, StatusBadge, btnDanger } from "@/components/ui";
 import { DinnerForm } from "./dinner-form";
@@ -33,15 +32,13 @@ export default async function DinnersAdminPage({
 
   const dinnerStats = new Map<string, { applied: number; checked_in: number; no_show: number }>();
 
-  const [appsResult, menuEntries] = await Promise.all([
+  const appsResult =
     dinners && dinners.length > 0
-      ? supabase
+      ? await supabase
           .from("applications")
           .select("dinner_id, status")
           .in("dinner_id", dinners.map((d) => d.id))
-      : Promise.resolve({ data: null }),
-    Promise.all((dinners ?? []).map(async (d) => [d.date, await fetchNeisDinnerMenu(d.date)] as const)),
-  ]);
+      : { data: null };
 
   for (const app of appsResult.data ?? []) {
     const s = dinnerStats.get(app.dinner_id) ?? { applied: 0, checked_in: 0, no_show: 0 };
@@ -50,8 +47,6 @@ export default async function DinnersAdminPage({
     if (app.status === "no_show") s.no_show++;
     dinnerStats.set(app.dinner_id, s);
   }
-
-  const menuByDate = new Map(menuEntries);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -82,9 +77,7 @@ export default async function DinnersAdminPage({
               <div key={dinner.id} className="rounded-sm border border-rivet-line p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-mono font-medium">
-                      {dinner.date} · {menuByDate.get(dinner.date) ?? "NEIS 급식 정보 없음"}
-                    </p>
+                    <p className="font-mono font-medium">{dinner.date}</p>
                     <p className="mt-1 font-mono text-xs text-ink-soft">
                       신청 {stats.applied + stats.checked_in}명 / 체크인 {stats.checked_in}명 / 노쇼 {stats.no_show}명
                     </p>

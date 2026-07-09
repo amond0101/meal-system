@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 부산기계공업고등학교 수요석식 엠블럼: 스틸블루 기어 + 세이프티 옐로 -->
+  <rect width="64" height="64" rx="8" fill="#24404e"/>
+  <g transform="translate(32 32)">
+    <!-- gear teeth -->
+    <g fill="#f2a900">
+      <rect x="-4" y="-27" width="8" height="10" rx="1.5"/>
+      <rect x="-4" y="17" width="8" height="10" rx="1.5"/>
+      <rect x="-27" y="-4" width="10" height="8" rx="1.5"/>
+      <rect x="17" y="-4" width="10" height="8" rx="1.5"/>
+      <rect x="-4" y="-27" width="8" height="10" rx="1.5" transform="rotate(45)"/>
+      <rect x="-4" y="17" width="8" height="10" rx="1.5" transform="rotate(45)"/>
+      <rect x="-27" y="-4" width="10" height="8" rx="1.5" transform="rotate(45)"/>
+      <rect x="17" y="-4" width="10" height="8" rx="1.5" transform="rotate(45)"/>
+    </g>
+    <circle r="19" fill="#f2a900"/>
+    <circle r="13.5" fill="#24404e"/>
+    <!-- 석(夕) meal initial styled as a bowl + steam -->
+    <path d="M-7 3 a7 7 0 0 0 14 0 z" fill="#f2a900"/>
+    <path d="M-3 -3 q1.5 -3 0 -6 M3 -3 q1.5 -3 0 -6" stroke="#f2a900" stroke-width="2" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>

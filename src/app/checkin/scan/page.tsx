@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
-import { fetchNeisDinnerMenu } from "@/lib/neis";
 import { QrScanner } from "@/components/qr-scanner";
-import { Card, PageTitle } from "@/components/ui";
+import { PageTitle } from "@/components/ui";
+import { LiveRefresh } from "@/components/live-refresh";
 
 function CounterDigit({ value, label }: { value: number; label: string }) {
   return (
@@ -21,10 +21,7 @@ export default async function CheckinScanPage() {
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: dinner }, liveMenu] = await Promise.all([
-    supabase.from("dinners").select("*").eq("date", today).maybeSingle(),
-    fetchNeisDinnerMenu(today),
-  ]);
+  const { data: dinner } = await supabase.from("dinners").select("*").eq("date", today).maybeSingle();
 
   let stats = { applied: 0, checked_in: 0, no_show: 0 };
   if (dinner) {
@@ -38,17 +35,8 @@ export default async function CheckinScanPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
+      <LiveRefresh />
       <PageTitle sub={today}>QR 체크인</PageTitle>
-
-      <Card className="mb-6">
-        <div className="flex items-center gap-2">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
-          <p className="font-mono text-xs uppercase tracking-widest text-steel">NEIS 실시간 급식 정보</p>
-        </div>
-        <p className="mt-2 text-sm">
-          {liveMenu ?? <span className="text-ink-soft">오늘 석식 정보가 NEIS에 없습니다.</span>}
-        </p>
-      </Card>
 
       {!dinner ? (
         <p className="mb-6 text-sm text-ink-soft">오늘은 등록된 수요석식 회차가 없습니다. QR 체크인은 날짜와 무관하게 항상 가능합니다.</p>

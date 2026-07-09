@@ -19,7 +19,7 @@ export default async function AdminHome() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <PageTitle>관리자</PageTitle>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="stagger grid gap-4 sm:grid-cols-2">
         {links.map((l) => (
           <Link key={l.href} href={l.href}>
             <Card className="transition hover:border-steel">

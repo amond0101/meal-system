@@ -2,7 +2,6 @@ import QRCode from "qrcode";
 import { redirect } from "next/navigation";
 import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
-import { fetchNeisDinnerMenu } from "@/lib/neis";
 import { applyToDinner, cancelApplication } from "./actions";
 import { PageTitle, SectionLabel, StatusBadge, btnPrimary, btnDanger } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
@@ -50,8 +49,8 @@ export default async function ApplyPage() {
   const dinnersWithMenu = await Promise.all(
     (dinners ?? []).map(async (dinner) => {
       const application = appMap.get(dinner.id);
-      const [menu, qrDataUrl] = await Promise.all([fetchNeisDinnerMenu(dinner.date), qrForApplication(application)]);
-      return { ...dinner, menu, application, qrDataUrl };
+      const qrDataUrl = await qrForApplication(application);
+      return { ...dinner, application, qrDataUrl };
     })
   );
 
@@ -61,13 +60,7 @@ export default async function ApplyPage() {
   const historyApps = await Promise.all(
     (myApps ?? [])
       .filter((a) => !upcomingDinnerIds.has(a.dinner_id))
-      .map(async (app) => {
-        const [menu, qrDataUrl] = await Promise.all([
-          app.dinners?.date ? fetchNeisDinnerMenu(app.dinners.date) : Promise.resolve(null),
-          qrForApplication(app),
-        ]);
-        return { ...app, menu, qrDataUrl };
-      })
+      .map(async (app) => ({ ...app, qrDataUrl: await qrForApplication(app) }))
   );
 
   return (
@@ -106,7 +99,6 @@ export default async function ApplyPage() {
             >
               <div className="flex-1 p-4">
                 <p className="font-mono font-medium">{dinner.date}</p>
-                <p className="text-sm text-ink-soft">{dinner.menu ?? "NEIS 급식 정보 없음"}</p>
                 <p className="mt-1 font-mono text-xs text-ink-soft">
                   마감 {new Date(dinner.application_deadline).toLocaleString("ko-KR")}
                 </p>
@@ -165,7 +157,6 @@ export default async function ApplyPage() {
                 <div className="flex-1 p-4">
                   <p className="font-mono text-xs uppercase tracking-widest text-steel">수요석식 급식권</p>
                   <p className="mt-1 font-display text-lg font-semibold text-ink">{app.dinners?.date}</p>
-                  <p className="text-sm text-ink-soft">{app.menu ?? "NEIS 급식 정보 없음"}</p>
                   <p className="mt-2 font-mono text-xs text-rivet">No. {ticketCode(app.qr_token)}</p>
                   <div className="mt-3">
                     <StatusBadge status={app.status} />

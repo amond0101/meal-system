@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
-import { fetchNeisDinnerMenu } from "@/lib/neis";
 import { Card, SectionLabel, StatusBadge } from "@/components/ui";
 
 export default async function Home() {
@@ -23,9 +22,8 @@ export default async function Home() {
 
   const wantsTodayStats = admin && upcoming?.date === today;
 
-  const [upcomingMenu, myApplication, todayApps] = upcoming
+  const [myApplication, todayApps] = upcoming
     ? await Promise.all([
-        fetchNeisDinnerMenu(upcoming.date),
         supabase
           .from("applications")
           .select("status")
@@ -41,7 +39,7 @@ export default async function Home() {
               .then((r) => r.data)
           : Promise.resolve(null),
       ])
-    : [null, null, null];
+    : [null, null];
 
   const todayStats = todayApps
     ? {
@@ -85,13 +83,13 @@ export default async function Home() {
         </Link>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="stagger grid gap-4 sm:grid-cols-2">
         <Card>
           <SectionLabel>다가오는 수요석식</SectionLabel>
           {upcoming ? (
             <>
               <p className="text-sm">
-                <span className="font-mono font-medium">{upcoming.date}</span> · {upcomingMenu ?? "NEIS 급식 정보 없음"}
+                <span className="font-mono font-medium">{upcoming.date}</span> 수요석식
               </p>
               <p className="mt-1 font-mono text-xs text-ink-soft">
                 마감 {new Date(upcoming.application_deadline).toLocaleString("ko-KR")}
@@ -109,14 +107,6 @@ export default async function Home() {
           )}
           <Link href="/apply" className="mt-3 inline-block text-sm text-steel underline underline-offset-2">
             신청 / 신청확인·QR 보기 →
-          </Link>
-        </Card>
-
-        <Card>
-          <SectionLabel>급식확인</SectionLabel>
-          <p className="text-sm text-ink-soft">오늘 급식 메뉴와 내 신청 상태를 확인하세요.</p>
-          <Link href="/checkin" className="mt-3 inline-block text-sm text-steel underline underline-offset-2">
-            급식확인 보기 →
           </Link>
         </Card>
 
