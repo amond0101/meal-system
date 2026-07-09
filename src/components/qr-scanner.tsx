@@ -254,6 +254,40 @@ export function QrScanner() {
     };
   }, []);
 
+  // Rendered inside the (transform-scaled) preview box when windowed, but at
+  // the stage level when fullscreen — otherwise the scale() that enlarges the
+  // camera view would blow these up ~3x on phones as well.
+  const feedbackOverlay = feedback && (
+    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+      <div
+        className={`flex h-24 w-24 items-center justify-center rounded-full text-white shadow-lg ${
+          feedback === "success" ? "bg-success/90" : "bg-danger/90"
+        }`}
+      >
+        {feedback === "success" ? <CheckIcon /> : <XIcon />}
+      </div>
+    </div>
+  );
+
+  const resultOverlay = (pending || result) && (
+    <div className="pointer-events-none absolute inset-x-0 bottom-[14%] z-10 flex flex-col items-center gap-2 px-4">
+      {pending && (
+        <p className="rounded-sm bg-black/70 px-4 py-2.5 text-center text-base font-semibold text-white shadow-lg">
+          체크인 처리 중...
+        </p>
+      )}
+      {!pending && result && (
+        <p
+          className={`rounded-sm px-4 py-2.5 text-center text-base font-semibold text-white shadow-lg ${
+            result.ok ? "bg-success/90" : "bg-danger/90"
+          }`}
+        >
+          {result.message}
+        </p>
+      )}
+    </div>
+  );
+
   return (
     <div
       className={
@@ -299,37 +333,12 @@ export function QrScanner() {
       >
         <div id={READER_ELEMENT_ID} ref={containerRef} className="h-full w-full [&_video]:block" />
 
-        {feedback && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div
-              className={`flex h-24 w-24 items-center justify-center rounded-full text-white shadow-lg ${
-                feedback === "success" ? "bg-success/90" : "bg-danger/90"
-              }`}
-            >
-              {feedback === "success" ? <CheckIcon /> : <XIcon />}
-            </div>
-          </div>
-        )}
-
-        {(pending || result) && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-[14%] flex flex-col items-center gap-2 px-4">
-            {pending && (
-              <p className="rounded-sm bg-black/70 px-4 py-2.5 text-center text-base font-semibold text-white shadow-lg">
-                체크인 처리 중...
-              </p>
-            )}
-            {!pending && result && (
-              <p
-                className={`rounded-sm px-4 py-2.5 text-center text-base font-semibold text-white shadow-lg ${
-                  result.ok ? "bg-success/90" : "bg-danger/90"
-                }`}
-              >
-                {result.message}
-              </p>
-            )}
-          </div>
-        )}
+        {!isFullscreen && feedbackOverlay}
+        {!isFullscreen && resultOverlay}
       </div>
+
+      {isFullscreen && feedbackOverlay}
+      {isFullscreen && resultOverlay}
 
       {isFullscreen && (
         <button
