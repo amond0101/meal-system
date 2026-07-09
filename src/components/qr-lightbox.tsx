@@ -57,12 +57,16 @@ export function QrLightbox({ token, alt }: { token: string; alt: string }) {
     };
   }, [token]);
 
-  // Only encode the bigger version the first time the ticket is actually
-  // opened, and only once — reopening the same ticket reuses the canvas
-  // already drawn instead of re-encoding it.
+  // Encode the bigger version every time the ticket is opened. This canvas
+  // only exists while the dialog below is mounted (it's inside `{open && (…)}`),
+  // so closing and reopening creates a brand-new, blank <canvas> element each
+  // time — re-running this unconditionally (instead of guarding on a
+  // "did we already draw it once" flag) is what makes sure the *new* canvas
+  // actually gets the QR drawn into it instead of staying blank.
   useEffect(() => {
-    if (!open || bigReady) return;
+    if (!open) return;
     let cancelled = false;
+    setBigReady(false);
     (async () => {
       const { toCanvas } = await import("qrcode");
       if (cancelled || !bigRef.current) return;
@@ -82,7 +86,7 @@ export function QrLightbox({ token, alt }: { token: string; alt: string }) {
     return () => {
       cancelled = true;
     };
-  }, [open, bigReady, token]);
+  }, [open, token]);
 
   useEffect(() => {
     if (!open) return;
@@ -131,12 +135,18 @@ export function QrLightbox({ token, alt }: { token: string; alt: string }) {
             <div className="overflow-hidden rounded-md border border-rivet-line bg-paper-raised shadow-2xl">
               <div className="h-1.5 bg-safety" aria-hidden />
 
-              <div className="flex flex-col items-center gap-4 px-6 py-7">
+              <div className="flex flex-col items-center gap-4 bg-paper px-6 py-7">
                 <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-steel">
                   Meal Ticket · Check-in QR
                 </p>
 
-                <div className="qr-glow relative w-full overflow-hidden rounded-sm border border-rivet-line bg-white p-4">
+                {/* No separate white card behind the QR here — the outer
+                    card is already `bg-paper-raised` (white), so a second
+                    white box just looked like unexplained blank padding.
+                    This section instead sits on `bg-paper` (the same recessed
+                    tone the compact ticket stub uses) and the QR draws
+                    straight onto it with a transparent background. */}
+                <div className="qr-glow relative w-full overflow-hidden rounded-sm p-3">
                   {/* `w-full` on the wrapper above gives this canvas's `w-full`
                       a definite percentage base. Without it, this box sits in
                       a `justify-center` flex column with no explicit width of
@@ -151,7 +161,7 @@ export function QrLightbox({ token, alt }: { token: string; alt: string }) {
                     className="aspect-square w-full max-w-[260px]"
                   />
                   {!bigReady && (
-                    <div className="absolute inset-4 animate-pulse rounded-sm bg-rivet-line/40" aria-hidden />
+                    <div className="absolute inset-3 animate-pulse rounded-sm bg-rivet-line/40" aria-hidden />
                   )}
                   {bigReady && (
                     <span
