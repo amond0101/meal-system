@@ -11,7 +11,8 @@ export default async function AdminHome() {
     { href: "/checkin/scan", label: "QR 체크인", desc: "카메라 권한 허용 후 QR 스캔으로 체크인 처리" },
     { href: "/admin/dinners", label: "회차 관리", desc: "수요석식 회차 생성/수정, 마감 처리" },
     { href: "/admin/users", label: "사용자 관리", desc: "역할(학생/담당교사/관리자) 변경" },
-    { href: "/admin/logs", label: "석식 인원 로그", desc: "회차별 총 인원과 체크인 기록 (실시간)" },
+    { href: "/admin/logs", label: "석식 인원 로그", desc: "회차별 총 인원과 체크인 기록 (실시간) · CSV 내보내기" },
+    { href: "/admin/stats", label: "주간 통계", desc: "노쇼율 추이, 벌점 상위 학생" },
     { href: "/admin/demerits", label: "벌점 현황", desc: "노쇼 벌점 기록 조회" },
   ];
 

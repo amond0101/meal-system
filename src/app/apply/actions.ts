@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile, isAdmin } from "@/lib/profile";
+import { DEMERIT_BLOCK_THRESHOLD } from "@/lib/policy";
 
 export async function applyToDinner(dinnerId: string) {
   const supabase = await createClient();
@@ -15,6 +16,14 @@ export async function applyToDinner(dinnerId: string) {
   if (!dinner) throw new Error("존재하지 않는 회차입니다.");
   if (dinner.status !== "open" || new Date(dinner.application_deadline) < new Date()) {
     throw new Error("신청 마감된 회차입니다.");
+  }
+
+  const { data: demerits } = await supabase.from("demerits").select("points").eq("student_id", user.id);
+  const totalDemerits = demerits?.reduce((sum, d) => sum + d.points, 0) ?? 0;
+  if (totalDemerits >= DEMERIT_BLOCK_THRESHOLD) {
+    throw new Error(
+      `누적 벌점 ${totalDemerits}점으로 신청이 제한되었습니다. 담당 선생님께 문의하세요.`
+    );
   }
 
   const { data: existing } = await supabase

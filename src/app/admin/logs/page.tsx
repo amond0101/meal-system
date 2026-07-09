@@ -40,6 +40,14 @@ export default async function LogsAdminPage() {
         석식 인원 로그
       </PageTitle>
 
+      <a
+        href="/admin/logs/export"
+        download
+        className="mb-6 inline-block rounded-sm border border-rivet px-3 py-1.5 text-sm text-ink hover:bg-paper"
+      >
+        CSV로 내보내기 (엑셀)
+      </a>
+
       <Card className="mb-8">
         <SectionLabel>회차별 총 인원</SectionLabel>
         <table className="w-full text-sm">

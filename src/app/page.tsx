@@ -50,12 +50,40 @@ export default async function Home() {
       }
     : null;
 
+  // Application-deadline reminder: shown while an upcoming round is still open
+  // and this user hasn't applied (or cancelled).
+  const deadline = upcoming ? new Date(upcoming.application_deadline) : null;
+  const hoursLeft = deadline
+    ? Math.floor((deadline.getTime() - new Date().getTime()) / 3600000)
+    : null;
+  const needsReminder =
+    upcoming &&
+    upcoming.status === "open" &&
+    hoursLeft !== null &&
+    hoursLeft >= 0 &&
+    (!myApplication || myApplication.status === "cancelled");
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <h1 className="mb-1 font-display text-2xl font-semibold uppercase tracking-wide text-ink">
         안녕하세요, {profile.name}님
       </h1>
       <p className="mb-6 text-sm text-ink-soft">수요석식 신청 현황을 확인하세요.</p>
+
+      {needsReminder && (
+        <Link
+          href="/apply"
+          className="mb-6 flex items-center justify-between gap-3 rounded-sm border-2 border-safety bg-safety/15 px-4 py-3"
+        >
+          <p className="text-sm font-medium text-safety-ink">
+            {upcoming!.date} 수요석식을 아직 신청하지 않았어요 — 마감까지{" "}
+            {hoursLeft! >= 24 ? `${Math.floor(hoursLeft! / 24)}일 ${hoursLeft! % 24}시간` : `${hoursLeft}시간`} 남았습니다.
+          </p>
+          <span className="whitespace-nowrap font-display text-sm font-semibold uppercase text-safety-ink">
+            신청하기 →
+          </span>
+        </Link>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>

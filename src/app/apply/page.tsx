@@ -8,6 +8,7 @@ import { PageTitle, SectionLabel, StatusBadge, btnPrimary, btnDanger } from "@/c
 import { SubmitButton } from "@/components/submit-button";
 import { QrLightbox } from "@/components/qr-lightbox";
 import { LiveRefresh } from "@/components/live-refresh";
+import { DEMERIT_BLOCK_THRESHOLD } from "@/lib/policy";
 
 function ticketCode(qrToken: string) {
   return qrToken.slice(0, 8).toUpperCase().match(/.{1,4}/g)?.join("-") ?? qrToken;
@@ -42,6 +43,7 @@ export default async function ApplyPage() {
   ]);
 
   const totalDemerits = demerits?.reduce((sum, d) => sum + d.points, 0) ?? 0;
+  const blocked = totalDemerits >= DEMERIT_BLOCK_THRESHOLD;
   const appMap = new Map(myApps?.map((a) => [a.dinner_id, a]));
   const upcomingDinnerIds = new Set((dinners ?? []).map((d) => d.id));
 
@@ -84,6 +86,13 @@ export default async function ApplyPage() {
         수요석식 신청
       </PageTitle>
 
+      {blocked && (
+        <p className="mb-4 rounded-sm border border-danger bg-danger/10 px-3 py-2 text-sm text-danger">
+          누적 벌점 {totalDemerits}점(기준 {DEMERIT_BLOCK_THRESHOLD}점 이상)으로 신청이 제한되었습니다.
+          담당 선생님께 문의하세요.
+        </p>
+      )}
+
       <div className="flex flex-col gap-4">
         {dinnersWithMenu.map((dinner) => {
           const { application, qrDataUrl } = dinner;
@@ -116,6 +125,8 @@ export default async function ApplyPage() {
                     </>
                   ) : deadlinePassed ? (
                     <span className="text-sm text-ink-soft">마감되었습니다.</span>
+                  ) : blocked ? (
+                    <span className="text-sm text-danger">벌점 초과로 신청 불가</span>
                   ) : (
                     <form action={applyToDinner.bind(null, dinner.id)}>
                       <SubmitButton className={btnPrimary} pendingText="신청 중…">
