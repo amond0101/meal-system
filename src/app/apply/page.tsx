@@ -1,14 +1,15 @@
 import { redirect } from "next/navigation";
-import { getProfile } from "@/lib/profile";
+import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { fetchNeisDinnerMenu } from "@/lib/neis";
-import { applyToDinner } from "./actions";
-import { Card, PageTitle, StatusBadge, btnPrimary } from "@/components/ui";
+import { applyToDinner, cancelApplication } from "./actions";
+import { Card, PageTitle, StatusBadge, btnPrimary, btnDanger } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 
 export default async function ApplyPage() {
   const profile = await getProfile();
   if (!profile) redirect("/login");
+  const admin = isAdmin(profile);
 
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
@@ -52,9 +53,18 @@ export default async function ApplyPage() {
                 마감 {new Date(dinner.application_deadline).toLocaleString("ko-KR")}
               </p>
 
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-3">
                 {applied ? (
-                  <StatusBadge status={application.status} />
+                  <>
+                    <StatusBadge status={application.status} />
+                    {admin && application.status !== "cancelled" && (
+                      <form action={cancelApplication.bind(null, application.id)}>
+                        <SubmitButton className={btnDanger} pendingText="취소 중…">
+                          취소 (관리자 테스트용)
+                        </SubmitButton>
+                      </form>
+                    )}
+                  </>
                 ) : deadlinePassed ? (
                   <span className="text-sm text-ink-soft">마감되었습니다.</span>
                 ) : (

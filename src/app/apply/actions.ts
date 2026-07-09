@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getProfile, isAdmin } from "@/lib/profile";
 
 export async function applyToDinner(dinnerId: string) {
   const supabase = await createClient();
@@ -35,6 +36,36 @@ export async function applyToDinner(dinnerId: string) {
       .insert({ dinner_id: dinnerId, student_id: user.id });
     if (error) throw new Error(error.message);
   }
+
+  revalidatePath("/apply");
+  revalidatePath("/");
+  revalidatePath("/my");
+}
+
+// Students normally cannot cancel once applied (see /apply page copy). This
+// is a test-only escape hatch for admins so they can reset their own
+// applications while testing the apply/check-in flow repeatedly.
+export async function cancelApplication(applicationId: string) {
+  const profile = await getProfile();
+  if (!profile) throw new Error("로그인이 필요합니다.");
+  if (!isAdmin(profile)) throw new Error("관리자만 신청을 취소할 수 있습니다.");
+
+  const supabase = await createClient();
+  const { data: application } = await supabase
+    .from("applications")
+    .select("id, student_id, status")
+    .eq("id", applicationId)
+    .single();
+
+  if (!application) throw new Error("존재하지 않는 신청입니다.");
+  if (application.student_id !== profile.id) throw new Error("본인의 신청만 취소할 수 있습니다.");
+  if (application.status === "cancelled") return;
+
+  const { error } = await supabase
+    .from("applications")
+    .update({ status: "cancelled", cancelled_at: new Date().toISOString(), checked_in_at: null, checked_in_by: null })
+    .eq("id", applicationId);
+  if (error) throw new Error(error.message);
 
   revalidatePath("/apply");
   revalidatePath("/");
