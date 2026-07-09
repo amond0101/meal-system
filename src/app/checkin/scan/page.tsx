@@ -51,9 +51,7 @@ export default async function CheckinScanPage() {
       </Card>
 
       {!dinner ? (
-        <p className="mb-6 text-sm text-ink-soft">
-          오늘은 등록된 수요석식 회차가 없습니다. 카메라는 켤 수 있지만, 오늘 회차가 없는 QR은 체크인 시 거부됩니다.
-        </p>
+        <p className="mb-6 text-sm text-ink-soft">오늘은 등록된 수요석식 회차가 없습니다. QR 체크인은 날짜와 무관하게 항상 가능합니다.</p>
       ) : (
         <div className="mb-6 grid grid-cols-3 gap-3">
           <CounterDigit value={stats.checked_in} label="체크인" />

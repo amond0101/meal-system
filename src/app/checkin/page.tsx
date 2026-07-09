@@ -58,7 +58,7 @@ export default async function CheckinPage() {
         {admin && (
           <Card>
             <p className="font-mono text-xs uppercase tracking-widest text-steel">관리자 전용 QR 체크인</p>
-            <p className="mt-2 text-sm text-ink-soft">카메라는 언제든지 켤 수 있습니다. 오늘 회차가 없는 QR은 체크인 시 거부됩니다.</p>
+            <p className="mt-2 text-sm text-ink-soft">카메라는 언제든지 켤 수 있고, 날짜와 무관하게 QR을 인식하면 바로 체크인됩니다.</p>
             <Link href="/checkin/scan" className={`${btnSteel} mt-4 inline-block`}>
               QR 체크인 열기
             </Link>

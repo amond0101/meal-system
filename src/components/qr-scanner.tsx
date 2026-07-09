@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { checkInToken } from "@/app/checkin/actions";
-import { btnPrimary } from "@/components/ui";
+import { btnOutline, btnPrimary } from "@/components/ui";
 
 type CameraState = "idle" | "requesting" | "active" | "error";
+type Feedback = "success" | "error" | null;
 
 const READER_ELEMENT_ID = "qr-reader";
 
@@ -26,16 +27,36 @@ function describeCameraError(err: unknown): string {
   return "카메라를 열지 못했습니다. 다시 시도해주세요.";
 }
 
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="h-14 w-14">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="h-14 w-14">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
 export function QrScanner() {
+  const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const lastScan = useRef<{ token: string; time: number } | null>(null);
   const processingRef = useRef(false);
+  const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [cameraState, setCameraState] = useState<CameraState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [pending, setPending] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   async function handleToken(token: string) {
     const normalized = token.trim();
@@ -51,8 +72,15 @@ export function QrScanner() {
     setPending(true);
     const res = await checkInToken(normalized);
     setResult(res);
-    processingRef.current = false;
     setPending(false);
+    processingRef.current = false;
+
+    // Flash a big check/x mark over the camera view so an admin scanning many
+    // students in a row gets an immediate glance-able result, separate from
+    // the persistent text message below.
+    setFeedback(res.ok ? "success" : "error");
+    if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+    feedbackTimeout.current = setTimeout(() => setFeedback(null), 1400);
   }
 
   async function stopScanner() {
@@ -134,34 +162,108 @@ export function QrScanner() {
     }
   }
 
+  // Toggling fullscreen resizes the reader container. html5-qrcode computes
+  // the scan box and video size once at start() time and doesn't react to
+  // later resizes, so the camera is restarted after the layout settles to
+  // keep the scan box aligned with the (now differently sized) video.
+  async function toggleFullscreen() {
+    const next = !isFullscreen;
+    const wasActive = cameraState === "active";
+
+    if (wasActive) {
+      await stopScanner();
+      setCameraState("idle");
+    }
+
+    setIsFullscreen(next);
+
+    try {
+      if (next) {
+        await rootRef.current?.requestFullscreen?.();
+      } else if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch {}
+
+    if (wasActive) {
+      setTimeout(() => void startScanner(), 50);
+    }
+  }
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      if (!document.fullscreenElement) setIsFullscreen(false);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
   useEffect(() => {
     return () => {
+      if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
       void stopScanner();
     };
   }, []);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-sm text-ink-soft">버튼을 누르면 브라우저가 카메라 권한을 물어봅니다. 허용하면 바로 촬영 화면이 켜집니다.</p>
-
-        {cameraState !== "active" && (
-          <button
-            type="button"
-            onClick={() => void startScanner()}
-            disabled={cameraState === "requesting"}
-            className={`${btnPrimary} mt-3 disabled:opacity-50`}
-          >
-            {cameraState === "requesting" ? "카메라 권한 요청 중…" : "카메라 켜기"}
-          </button>
+    <div
+      ref={rootRef}
+      className={
+        isFullscreen
+          ? "fixed inset-0 z-50 flex flex-col gap-3 bg-black p-3"
+          : "flex flex-col gap-4"
+      }
+    >
+      <div className={isFullscreen ? "flex flex-1 flex-col" : ""}>
+        {!isFullscreen && (
+          <p className="text-sm text-ink-soft">버튼을 누르면 브라우저가 카메라 권한을 물어봅니다. 허용하면 바로 촬영 화면이 켜집니다.</p>
         )}
 
+        <div className={`flex flex-wrap items-center gap-2 ${isFullscreen ? "mb-3" : "mt-3"}`}>
+          {cameraState !== "active" && (
+            <button
+              type="button"
+              onClick={() => void startScanner()}
+              disabled={cameraState === "requesting"}
+              className={`${btnPrimary} disabled:opacity-50`}
+            >
+              {cameraState === "requesting" ? "카메라 권한 요청 중…" : "카메라 켜기"}
+            </button>
+          )}
+
+          {cameraState === "active" && (
+            <button type="button" onClick={() => void toggleFullscreen()} className={btnOutline}>
+              {isFullscreen ? "전체화면 종료" : "전체화면으로 보기"}
+            </button>
+          )}
+        </div>
+
         <div
-          id={READER_ELEMENT_ID}
-          ref={containerRef}
-          style={{ minHeight: cameraState === "active" ? 320 : 0 }}
-          className="mx-auto mt-3 w-full max-w-sm overflow-hidden rounded-sm border border-rivet bg-black/5 empty:border-0 empty:bg-transparent [&_video]:block"
-        />
+          className={
+            isFullscreen
+              ? "relative mx-auto w-full max-w-none flex-1 overflow-hidden rounded-sm border border-white/10 bg-black"
+              : "relative mx-auto mt-3 w-full max-w-sm overflow-hidden rounded-sm border border-rivet bg-black/5"
+          }
+        >
+          <div
+            id={READER_ELEMENT_ID}
+            ref={containerRef}
+            style={{ minHeight: cameraState === "active" ? (isFullscreen ? "100%" : 320) : 0 }}
+            className="h-full w-full empty:border-0 empty:bg-transparent [&_video]:block"
+          />
+
+          {feedback && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div
+                className={`flex h-24 w-24 items-center justify-center rounded-full text-white shadow-lg ${
+                  feedback === "success" ? "bg-success/90" : "bg-danger/90"
+                }`}
+              >
+                {feedback === "success" ? <CheckIcon /> : <XIcon />}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {errorMessage && (
