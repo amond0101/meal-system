@@ -6,7 +6,7 @@
       "url": "https://mcp.render.com/mcp",
       "enabled": true,
       "headers": {
-        "Authorization": "Bearer {env:rnd_eyoUy86Eoy5VbBV0pDYoMTGfZUPO}"
+        "Authorization": "Bearer {env:RENDER_API_KEY}"
       }
     }
   }

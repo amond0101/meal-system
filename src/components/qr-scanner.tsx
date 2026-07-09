@@ -2,102 +2,152 @@
 
 import { useEffect, useRef, useState } from "react";
 import { checkInToken } from "@/app/checkin/actions";
-import { btnSteel, btnPrimary } from "@/components/ui";
+import { btnPrimary } from "@/components/ui";
 
-type CameraState = "idle" | "requesting" | "granted" | "denied" | "unavailable";
+type CameraState = "idle" | "requesting" | "active" | "error";
+
+const READER_ELEMENT_ID = "qr-reader";
 
 export function QrScanner() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const lastScan = useRef<{ token: string; time: number } | null>(null);
+  const processingRef = useRef(false);
+
   const [cameraState, setCameraState] = useState<CameraState>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
-  const [manualToken, setManualToken] = useState("");
   const [pending, setPending] = useState(false);
 
-  const handleToken = async (token: string) => {
+  async function handleToken(token: string) {
+    const normalized = token.trim();
+    if (!normalized || processingRef.current) return;
+
     const now = Date.now();
-    if (lastScan.current && lastScan.current.token === token && now - lastScan.current.time < 4000) {
+    if (lastScan.current && lastScan.current.token === normalized && now - lastScan.current.time < 4000) {
       return;
     }
-    lastScan.current = { token, time: now };
+    lastScan.current = { token: normalized, time: now };
 
+    processingRef.current = true;
     setPending(true);
-    const res = await checkInToken(token);
+    const res = await checkInToken(normalized);
     setResult(res);
+    processingRef.current = false;
     setPending(false);
-  };
+  }
 
-  const requestCamera = async () => {
-    setCameraState("requesting");
+  async function stopScanner() {
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
+    if (!scanner) return;
+
+    try {
+      if (scanner.isScanning) {
+        await scanner.stop();
+      }
+    } catch {}
+
+    try {
+      scanner.clear();
+    } catch {}
+  }
+
+  // Fills the container with the injected <video>. html5-qrcode sets a fixed
+  // pixel width on the video element based on the container's width at start
+  // time — force it to visually fill the box on every screen size instead.
+  function fillVideoElement() {
+    const video = containerRef.current?.querySelector("video");
+    if (!video) return;
+    video.style.width = "100%";
+    video.style.height = "100%";
+    video.style.objectFit = "cover";
+  }
+
+  async function startScanner() {
+    if (cameraState === "requesting" || cameraState === "active" || !containerRef.current) return;
+
     setResult(null);
+    setErrorMessage(null);
+    setCameraState("requesting");
+
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setCameraState("unavailable");
-        return;
+        throw new Error("unsupported");
       }
-      // Explicit getUserMedia call forces the browser to show its permission
-      // prompt before the scanner library takes over.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+
+      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
+      if (!containerRef.current) return;
+
+      const scanner = new Html5Qrcode(READER_ELEMENT_ID, {
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        verbose: false,
       });
-      stream.getTracks().forEach((t) => t.stop());
-      setCameraState("granted");
-    } catch {
-      setCameraState("denied");
-    }
-  };
+      scannerRef.current = scanner;
 
-  useEffect(() => {
-    if (cameraState !== "granted" || !containerRef.current) return;
-    let scanner: import("html5-qrcode").Html5QrcodeScanner | undefined;
-    let cancelled = false;
-
-    import("html5-qrcode").then(({ Html5QrcodeScanner }) => {
-      if (cancelled || !containerRef.current) return;
-      scanner = new Html5QrcodeScanner(
-        containerRef.current.id,
-        { fps: 10, qrbox: 250 },
-        false
-      );
-      scanner.render(
-        (decodedText) => handleToken(decodedText),
+      // Clicking the button is the user gesture — start() is called directly
+      // (no extra await before it) so the browser's permission prompt fires
+      // immediately, and the live video shows as soon as it's granted.
+      await scanner.start(
+        { facingMode: { ideal: "environment" } },
+        {
+          fps: 10,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7);
+            return { width: size, height: size };
+          },
+          disableFlip: true,
+        },
+        (decodedText) => {
+          void handleToken(decodedText);
+        },
         () => {}
       );
-    });
 
+      fillVideoElement();
+      setCameraState("active");
+    } catch {
+      await stopScanner();
+      setCameraState("error");
+      setErrorMessage("카메라 권한을 허용해야 QR 인식을 사용할 수 있습니다. 주소창의 자물쇠 아이콘에서 카메라 권한을 허용한 뒤 다시 눌러주세요.");
+    }
+  }
+
+  useEffect(() => {
     return () => {
-      cancelled = true;
-      scanner?.clear().catch(() => {});
+      void stopScanner();
     };
-  }, [cameraState]);
+  }, []);
 
   return (
     <div className="flex flex-col gap-4">
-      {cameraState !== "granted" && (
-        <div className="flex flex-col items-center gap-3 rounded-sm border border-rivet-line bg-paper-raised p-6">
+      <div>
+        <p className="text-sm text-ink-soft">버튼을 누르면 브라우저가 카메라 권한을 물어봅니다. 허용하면 바로 촬영 화면이 켜집니다.</p>
+
+        {cameraState !== "active" && (
           <button
             type="button"
-            onClick={requestCamera}
+            onClick={() => void startScanner()}
             disabled={cameraState === "requesting"}
-            className={`${btnPrimary} disabled:opacity-50`}
+            className={`${btnPrimary} mt-3 disabled:opacity-50`}
           >
-            {cameraState === "requesting" ? "권한 요청 중…" : "카메라 켜기 (권한 요청)"}
+            {cameraState === "requesting" ? "카메라 권한 요청 중…" : "카메라 켜기"}
           </button>
-          {cameraState === "denied" && (
-            <p className="text-center text-xs text-danger">
-              카메라 권한이 거부되었습니다. 주소창의 자물쇠 아이콘 → 카메라 → 허용으로 바꾼 뒤 다시
-              눌러주세요.
-            </p>
-          )}
-          {cameraState === "unavailable" && (
-            <p className="text-center text-xs text-danger">
-              이 브라우저에서는 카메라를 사용할 수 없습니다. 아래에 토큰을 직접 입력해주세요.
-            </p>
-          )}
-        </div>
+        )}
+
+        <div
+          id={READER_ELEMENT_ID}
+          ref={containerRef}
+          style={{ minHeight: cameraState === "active" ? 320 : 0 }}
+          className="mx-auto mt-3 w-full max-w-sm overflow-hidden rounded-sm border border-rivet bg-black/5 empty:border-0 empty:bg-transparent [&_video]:block"
+        />
+      </div>
+
+      {errorMessage && (
+        <p className="rounded-sm border border-danger bg-danger/10 px-3 py-2 text-sm text-danger">{errorMessage}</p>
       )}
 
-      <div id="qr-reader" ref={containerRef} className="mx-auto w-full max-w-sm" />
+      {pending && <p className="rounded-sm border border-rivet bg-paper px-3 py-2 text-sm text-ink-soft">체크인 처리 중...</p>}
 
       {result && (
         <p
@@ -108,26 +158,6 @@ export function QrScanner() {
           {result.message}
         </p>
       )}
-
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (!manualToken.trim()) return;
-          await handleToken(manualToken.trim());
-          setManualToken("");
-        }}
-        className="flex gap-2"
-      >
-        <input
-          value={manualToken}
-          onChange={(e) => setManualToken(e.target.value)}
-          placeholder="카메라가 안 되면 QR 토큰을 직접 입력"
-          className="flex-1 rounded-sm border border-rivet px-2 py-1 font-mono text-sm"
-        />
-        <button disabled={pending} className={`${btnSteel} disabled:opacity-50`}>
-          확인
-        </button>
-      </form>
     </div>
   );
 }
