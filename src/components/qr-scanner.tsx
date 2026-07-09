@@ -8,6 +8,24 @@ type CameraState = "idle" | "requesting" | "active" | "error";
 
 const READER_ELEMENT_ID = "qr-reader";
 
+function describeCameraError(err: unknown): string {
+  const name = err instanceof DOMException ? err.name : undefined;
+
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return "카메라 권한이 거부되었습니다. 브라우저 주소창의 자물쇠(또는 사이트 정보) 아이콘 → 카메라 권한을 허용으로 바꾼 뒤 다시 눌러주세요.";
+  }
+  if (name === "NotFoundError" || name === "OverconstrainedError") {
+    return "이 기기에서 사용 가능한 카메라를 찾지 못했습니다.";
+  }
+  if (name === "NotReadableError") {
+    return "다른 앱이 카메라를 사용 중입니다. 카메라를 쓰는 다른 앱/탭을 닫고 다시 시도해주세요.";
+  }
+  if (err instanceof Error && err.message === "unsupported") {
+    return "이 브라우저는 카메라 사용을 지원하지 않습니다.";
+  }
+  return "카메라를 열지 못했습니다. 다시 시도해주세요.";
+}
+
 export function QrScanner() {
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
@@ -86,10 +104,13 @@ export function QrScanner() {
       scannerRef.current = scanner;
 
       // Clicking the button is the user gesture — start() is called directly
-      // (no extra await before it) so the browser's permission prompt fires
-      // immediately, and the live video shows as soon as it's granted.
+      // (no extra await before it) so the browser's getUserMedia permission
+      // prompt fires immediately, and the live video shows as soon as it's
+      // granted. NOTE: html5-qrcode only accepts facingMode as a plain string
+      // ("environment") or an { exact } object — an { ideal } object throws
+      // synchronously before getUserMedia is ever called.
       await scanner.start(
-        { facingMode: { ideal: "environment" } },
+        { facingMode: "environment" },
         {
           fps: 10,
           qrbox: (viewfinderWidth, viewfinderHeight) => {
@@ -106,10 +127,10 @@ export function QrScanner() {
 
       fillVideoElement();
       setCameraState("active");
-    } catch {
+    } catch (err) {
       await stopScanner();
       setCameraState("error");
-      setErrorMessage("카메라 권한을 허용해야 QR 인식을 사용할 수 있습니다. 주소창의 자물쇠 아이콘에서 카메라 권한을 허용한 뒤 다시 눌러주세요.");
+      setErrorMessage(describeCameraError(err));
     }
   }
 
