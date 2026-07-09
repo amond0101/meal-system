@@ -7,6 +7,7 @@ import { applyToDinner, cancelApplication } from "./actions";
 import { PageTitle, SectionLabel, StatusBadge, btnPrimary, btnDanger } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { QrLightbox } from "@/components/qr-lightbox";
+import { LiveRefresh } from "@/components/live-refresh";
 
 function ticketCode(qrToken: string) {
   return qrToken.slice(0, 8).toUpperCase().match(/.{1,4}/g)?.join("-") ?? qrToken;
@@ -69,6 +70,7 @@ export default async function ApplyPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
+      <LiveRefresh studentId={profile.id} />
       <PageTitle
         sub={
           <>

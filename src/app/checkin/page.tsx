@@ -4,6 +4,7 @@ import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { fetchNeisDinnerMenu } from "@/lib/neis";
 import { Card, PageTitle, StatusBadge, btnSteel } from "@/components/ui";
+import { LiveRefresh } from "@/components/live-refresh";
 
 export default async function CheckinPage() {
   const profile = await getProfile();
@@ -30,6 +31,7 @@ export default async function CheckinPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
+      <LiveRefresh studentId={admin ? undefined : profile.id} />
       <PageTitle sub={today}>급식확인</PageTitle>
 
       <Card className="mb-6">
