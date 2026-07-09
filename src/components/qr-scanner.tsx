@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { checkInToken } from "@/app/checkin/actions";
 import { btnPrimary } from "@/components/ui";
 
@@ -77,6 +78,7 @@ function ExitFullscreenIcon() {
 }
 
 export function QrScanner() {
+  const router = useRouter();
   const boxRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
@@ -108,6 +110,14 @@ export function QrScanner() {
     setResult(res);
     setPending(false);
     processingRef.current = false;
+
+    // Re-run the server component tree so this page's own check-in counter
+    // (체크인/대기중/전체 신청) updates right away for the admin doing the
+    // scanning, instead of only relying on the Realtime round trip (which
+    // still separately keeps other open tabs — e.g. a student's /apply page
+    // — in sync). router.refresh() re-fetches server data in place; it
+    // doesn't remount this client component, so the live camera keeps running.
+    if (res.ok) router.refresh();
 
     // Flash a big check/x mark over the camera view so an admin scanning many
     // students in a row gets an immediate glance-able result, separate from
