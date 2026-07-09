@@ -78,6 +78,7 @@ export function QrScanner() {
   const lastScan = useRef<{ token: string; time: number } | null>(null);
   const processingRef = useRef(false);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resultTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [cameraState, setCameraState] = useState<CameraState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -105,10 +106,15 @@ export function QrScanner() {
 
     // Flash a big check/x mark over the camera view so an admin scanning many
     // students in a row gets an immediate glance-able result, separate from
-    // the persistent text message below it.
+    // the text message below it.
     setFeedback(res.ok ? "success" : "error");
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
     feedbackTimeout.current = setTimeout(() => setFeedback(null), 1400);
+
+    // Auto-dismiss the text message too, so it doesn't linger on screen
+    // until the next scan.
+    if (resultTimeout.current) clearTimeout(resultTimeout.current);
+    resultTimeout.current = setTimeout(() => setResult(null), 3000);
   }
 
   async function stopScanner() {
@@ -200,19 +206,14 @@ export function QrScanner() {
     }
   }
 
-  // Toggling fullscreen resizes the reader container. html5-qrcode computes
-  // the scan box and video size once at start() time and doesn't react to
-  // later resizes, so the camera is restarted after the layout settles to
-  // keep the scan box aligned with the (now differently sized) video.
+  // Toggling fullscreen only changes CSS layout — the running camera stream
+  // is left untouched (no stop/restart), so the browser never re-prompts for
+  // camera permission after the first grant. The video is already forced to
+  // width/height 100% (see fillVideoElement), so it fills whichever box CSS
+  // gives it; the scan box may momentarily be a little off from the exact
+  // native crop right after resizing, but no new getUserMedia call happens.
   async function toggleFullscreen() {
     const next = !isFullscreen;
-    const wasActive = cameraState === "active";
-
-    if (wasActive) {
-      await stopScanner();
-      setCameraState("idle");
-    }
-
     setIsFullscreen(next);
 
     try {
@@ -222,10 +223,6 @@ export function QrScanner() {
         await document.exitFullscreen();
       }
     } catch {}
-
-    if (wasActive) {
-      setTimeout(() => void startScanner(), 50);
-    }
   }
 
   useEffect(() => {
@@ -239,6 +236,7 @@ export function QrScanner() {
   useEffect(() => {
     return () => {
       if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+      if (resultTimeout.current) clearTimeout(resultTimeout.current);
       void stopScanner();
     };
   }, []);
@@ -303,13 +301,15 @@ export function QrScanner() {
           )}
 
           {(pending || result) && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3">
+            <div className="pointer-events-none absolute inset-x-0 bottom-[14%] flex flex-col items-center gap-2 px-4">
               {pending && (
-                <p className="rounded-sm bg-black/70 px-3 py-2 text-center text-sm text-white shadow-lg">체크인 처리 중...</p>
+                <p className="rounded-sm bg-black/70 px-4 py-2.5 text-center text-base font-semibold text-white shadow-lg">
+                  체크인 처리 중...
+                </p>
               )}
               {!pending && result && (
                 <p
-                  className={`rounded-sm px-3 py-2 text-center text-sm text-white shadow-lg ${
+                  className={`rounded-sm px-4 py-2.5 text-center text-base font-semibold text-white shadow-lg ${
                     result.ok ? "bg-success/90" : "bg-danger/90"
                   }`}
                 >
