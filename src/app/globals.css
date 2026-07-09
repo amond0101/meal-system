@@ -181,3 +181,77 @@ main > * {
 .stamp {
   animation: stamp-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
+
+/* --- QR ticket lightbox -------------------------------------------------- */
+/* The backdrop simply fades in; the ticket card itself pops up off the tap
+   point with a little overshoot, like it's being pulled out and set down —
+   consistent with the stamp-in bounce used elsewhere on this page. */
+@keyframes qr-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.qr-backdrop-in {
+  animation: qr-backdrop-in 0.2s ease-out both;
+}
+
+@keyframes qr-card-in {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.9) rotate(-1.5deg);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.02) rotate(0.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+.qr-card-in {
+  animation: qr-card-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Soft breathing halo around the QR itself, signalling "this is live and
+   ready to scan" without being distracting. */
+@keyframes qr-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(242 169 0 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgb(242 169 0 / 0);
+  }
+}
+.qr-glow {
+  animation: qr-glow-pulse 2.2s ease-in-out infinite;
+}
+
+/* A single scanner-style beam sweeps down over the code once it's ready,
+   echoing the check-in scanner elsewhere in the app. `top` is animated
+   (rather than transform: translateY) so the percentages resolve against
+   the QR box's own height regardless of how big it renders. */
+@keyframes qr-sweep {
+  from {
+    top: -20%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  to {
+    top: 100%;
+    opacity: 0;
+  }
+}
+.qr-sweep {
+  position: absolute;
+  animation: qr-sweep 1.1s cubic-bezier(0.4, 0, 0.2, 1) 0.15s both;
+}

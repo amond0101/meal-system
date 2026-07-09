@@ -45,16 +45,33 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user && !isPublicPath && !request.nextUrl.pathname.startsWith("/onboarding")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("student_no, role")
-      .eq("id", user.id)
-      .single();
+    // This profiles lookup exists purely to decide whether to bounce the user
+    // to /onboarding — it's not a security boundary (RLS + getProfile() in
+    // the page itself handle that). Once we've confirmed a given user doesn't
+    // need onboarding, remember it in a cookie keyed to their user id so
+    // every subsequent request on every page skips this extra DB round trip
+    // instead of re-querying it on every single navigation.
+    const onboardedFor = request.cookies.get("ms_onboarded")?.value;
 
-    if (profile && profile.role === "student" && !profile.student_no) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
+    if (onboardedFor !== user.id) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("student_no, role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile && profile.role === "student" && !profile.student_no) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/onboarding";
+        return NextResponse.redirect(url);
+      }
+
+      response.cookies.set("ms_onboarded", user.id, {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+      });
     }
   }
 

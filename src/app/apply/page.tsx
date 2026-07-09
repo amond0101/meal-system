@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import { redirect } from "next/navigation";
 import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
@@ -11,11 +10,6 @@ import { DEMERIT_BLOCK_THRESHOLD } from "@/lib/policy";
 
 function ticketCode(qrToken: string) {
   return qrToken.slice(0, 8).toUpperCase().match(/.{1,4}/g)?.join("-") ?? qrToken;
-}
-
-async function qrForApplication(app: { status: string; qr_token: string } | null | undefined) {
-  if (!app || app.status !== "applied") return null;
-  return QRCode.toDataURL(app.qr_token, { margin: 0, color: { dark: "#1c2321", light: "#00000000" } });
 }
 
 export default async function ApplyPage() {
@@ -46,22 +40,15 @@ export default async function ApplyPage() {
   const appMap = new Map(myApps?.map((a) => [a.dinner_id, a]));
   const upcomingDinnerIds = new Set((dinners ?? []).map((d) => d.id));
 
-  const dinnersWithMenu = await Promise.all(
-    (dinners ?? []).map(async (dinner) => {
-      const application = appMap.get(dinner.id);
-      const qrDataUrl = await qrForApplication(application);
-      return { ...dinner, application, qrDataUrl };
-    })
-  );
+  const dinnersWithMenu = (dinners ?? []).map((dinner) => ({
+    ...dinner,
+    application: appMap.get(dinner.id),
+  }));
 
   // Applications for dinners that aren't in the "open & upcoming" list above
   // (past dinners, already-closed ones, etc.) — shown as history below so
   // this one page covers both applying and checking past QR tickets.
-  const historyApps = await Promise.all(
-    (myApps ?? [])
-      .filter((a) => !upcomingDinnerIds.has(a.dinner_id))
-      .map(async (app) => ({ ...app, qrDataUrl: await qrForApplication(app) }))
-  );
+  const historyApps = (myApps ?? []).filter((a) => !upcomingDinnerIds.has(a.dinner_id));
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -88,7 +75,7 @@ export default async function ApplyPage() {
 
       <div className="flex flex-col gap-4">
         {dinnersWithMenu.map((dinner) => {
-          const { application, qrDataUrl } = dinner;
+          const { application } = dinner;
           const deadlinePassed = new Date(dinner.application_deadline) < new Date();
           const applied = application && application.status !== "cancelled";
 
@@ -129,9 +116,9 @@ export default async function ApplyPage() {
                 </div>
               </div>
 
-              {qrDataUrl && (
+              {application && application.status === "applied" && (
                 <div className="ticket-perforation flex w-32 flex-col items-center justify-center gap-1 bg-paper p-3">
-                  <QrLightbox src={qrDataUrl} alt="체크인용 QR 코드" />
+                  <QrLightbox token={application.qr_token} alt="체크인용 QR 코드" />
                   <p className="text-center font-mono text-[10px] leading-tight text-ink-soft">
                     탭하면 확대 · 급식 수령 시 제시
                   </p>
@@ -163,9 +150,9 @@ export default async function ApplyPage() {
                   </div>
                 </div>
 
-                {app.qrDataUrl ? (
+                {app.status === "applied" ? (
                   <div className="ticket-perforation flex w-32 flex-col items-center justify-center gap-1 bg-paper p-3">
-                    <QrLightbox src={app.qrDataUrl} alt="체크인용 QR 코드" />
+                    <QrLightbox token={app.qr_token} alt="체크인용 QR 코드" />
                     <p className="text-center font-mono text-[10px] leading-tight text-ink-soft">
                       탭하면 확대 · 급식 수령 시 제시
                     </p>
