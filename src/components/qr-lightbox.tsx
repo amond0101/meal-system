@@ -40,6 +40,16 @@ export function QrLightbox({ token, alt }: { token: string; alt: string }) {
         margin: 0,
         color: { dark: "#1c2321", light: "#00000000" },
       });
+      // qrcode's canvas renderer sets inline `style.width`/`style.height`
+      // (in px, matching the `width` option above) directly on the element —
+      // inline styles beat every Tailwind class, so without clearing them
+      // here the canvas ignores our `h-20 w-20` sizing entirely and renders
+      // at its raw pixel resolution instead (the actual cause of the
+      // "stretched on mobile" bug: nothing was scaling it down at all).
+      if (stubRef.current) {
+        stubRef.current.style.width = "";
+        stubRef.current.style.height = "";
+      }
       if (!cancelled) setStubReady(true);
     })();
     return () => {
@@ -61,6 +71,12 @@ export function QrLightbox({ token, alt }: { token: string; alt: string }) {
         margin: 0,
         color: { dark: "#1c2321", light: "#00000000" },
       });
+      // Same fix as the stub above — clear the library's inline px size so
+      // our responsive `w-full max-w-[260px] aspect-square` classes apply.
+      if (bigRef.current) {
+        bigRef.current.style.width = "";
+        bigRef.current.style.height = "";
+      }
       if (!cancelled) setBigReady(true);
     })();
     return () => {
