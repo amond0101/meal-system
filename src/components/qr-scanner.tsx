@@ -2,131 +2,102 @@
 
 import { useEffect, useRef, useState } from "react";
 import { checkInToken } from "@/app/checkin/actions";
-import { btnSteel } from "@/components/ui";
+import { btnSteel, btnPrimary } from "@/components/ui";
+
+type CameraState = "idle" | "requesting" | "granted" | "denied" | "unavailable";
 
 export function QrScanner() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const lastScan = useRef<{ token: string; time: number } | null>(null);
-  const processingRef = useRef(false);
+  const [cameraState, setCameraState] = useState<CameraState>("idle");
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [cameraReady, setCameraReady] = useState(false);
+  const [manualToken, setManualToken] = useState("");
   const [pending, setPending] = useState(false);
-  const [starting, setStarting] = useState(false);
 
-  async function stopScanner() {
-    const scanner = scannerRef.current;
-    if (!scanner) return;
-
-    try {
-      if (scanner.isScanning) {
-        await scanner.stop();
-      }
-    } catch {}
-
-    try {
-      scanner.clear();
-    } catch {}
-
-    scannerRef.current = null;
-    setCameraReady(false);
-  }
-
-  async function startScanner() {
-    if (starting || cameraReady || !containerRef.current) return;
-
-    setResult(null);
-    setCameraError(null);
-    setStarting(true);
-
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("이 브라우저는 카메라 권한 요청을 지원하지 않습니다.");
-      }
-
-      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
-
-      const scanner = new Html5Qrcode(containerRef.current.id, {
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-        verbose: false,
-      });
-
-      scannerRef.current = scanner;
-      await scanner.start(
-        { facingMode: { ideal: "environment" } },
-        {
-          fps: 10,
-          qrbox: { width: 240, height: 240 },
-          aspectRatio: 1,
-          disableFlip: true,
-        },
-        (decodedText) => {
-          void handleToken(decodedText);
-        },
-        () => {}
-      );
-
-      setCameraReady(true);
-    } catch {
-      await stopScanner();
-      setCameraError("브라우저에서 카메라 권한을 허용한 뒤 다시 시도해주세요.");
-    } finally {
-      setStarting(false);
-    }
-  }
-
-  async function handleToken(token: string) {
-    const normalized = token.trim();
-    if (!normalized || processingRef.current) return;
-
+  const handleToken = async (token: string) => {
     const now = Date.now();
-    if (lastScan.current && lastScan.current.token === normalized && now - lastScan.current.time < 4000) {
+    if (lastScan.current && lastScan.current.token === token && now - lastScan.current.time < 4000) {
       return;
     }
-    lastScan.current = { token: normalized, time: now };
+    lastScan.current = { token, time: now };
 
-    processingRef.current = true;
     setPending(true);
-    const res = await checkInToken(normalized);
+    const res = await checkInToken(token);
     setResult(res);
-    processingRef.current = false;
     setPending(false);
-  }
+  };
+
+  const requestCamera = async () => {
+    setCameraState("requesting");
+    setResult(null);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraState("unavailable");
+        return;
+      }
+      // Explicit getUserMedia call forces the browser to show its permission
+      // prompt before the scanner library takes over.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      stream.getTracks().forEach((t) => t.stop());
+      setCameraState("granted");
+    } catch {
+      setCameraState("denied");
+    }
+  };
 
   useEffect(() => {
+    if (cameraState !== "granted" || !containerRef.current) return;
+    let scanner: import("html5-qrcode").Html5QrcodeScanner | undefined;
+    let cancelled = false;
+
+    import("html5-qrcode").then(({ Html5QrcodeScanner }) => {
+      if (cancelled || !containerRef.current) return;
+      scanner = new Html5QrcodeScanner(
+        containerRef.current.id,
+        { fps: 10, qrbox: 250 },
+        false
+      );
+      scanner.render(
+        (decodedText) => handleToken(decodedText),
+        () => {}
+      );
+    });
+
     return () => {
-      void stopScanner();
+      cancelled = true;
+      scanner?.clear().catch(() => {});
     };
-  }, []);
+  }, [cameraState]);
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-sm text-ink-soft">버튼을 눌러 브라우저 카메라 권한을 허용한 뒤 학생 QR을 비춰 체크인하세요.</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={() => void startScanner()} disabled={starting || cameraReady} className={`${btnSteel} disabled:opacity-50`}>
-            {starting ? "카메라 여는 중..." : cameraReady ? "카메라 사용 중" : "카메라 켜기"}
+      {cameraState !== "granted" && (
+        <div className="flex flex-col items-center gap-3 rounded-sm border border-rivet-line bg-paper-raised p-6">
+          <button
+            type="button"
+            onClick={requestCamera}
+            disabled={cameraState === "requesting"}
+            className={`${btnPrimary} disabled:opacity-50`}
+          >
+            {cameraState === "requesting" ? "권한 요청 중…" : "카메라 켜기 (권한 요청)"}
           </button>
+          {cameraState === "denied" && (
+            <p className="text-center text-xs text-danger">
+              카메라 권한이 거부되었습니다. 주소창의 자물쇠 아이콘 → 카메라 → 허용으로 바꾼 뒤 다시
+              눌러주세요.
+            </p>
+          )}
+          {cameraState === "unavailable" && (
+            <p className="text-center text-xs text-danger">
+              이 브라우저에서는 카메라를 사용할 수 없습니다. 아래에 토큰을 직접 입력해주세요.
+            </p>
+          )}
         </div>
-        <div
-          id="qr-reader"
-          ref={containerRef}
-          className="mx-auto mt-3 aspect-square w-full max-w-sm overflow-hidden rounded-sm border border-rivet bg-black/5"
-        />
-      </div>
-
-      {!cameraReady && !cameraError && !starting && (
-        <p className="rounded-sm border border-rivet bg-paper px-3 py-2 text-sm text-ink-soft">아직 카메라 권한을 요청하지 않았습니다.</p>
       )}
 
-      {starting && <p className="rounded-sm border border-rivet bg-paper px-3 py-2 text-sm text-ink-soft">카메라 권한 요청 중...</p>}
-
-      {cameraError && <p className="rounded-sm border border-danger bg-danger/10 px-3 py-2 text-sm text-danger">{cameraError}</p>}
-
-      {pending && (
-        <p className="rounded-sm border border-rivet bg-paper px-3 py-2 text-sm text-ink-soft">체크인 처리 중...</p>
-      )}
+      <div id="qr-reader" ref={containerRef} className="mx-auto w-full max-w-sm" />
 
       {result && (
         <p
@@ -137,6 +108,26 @@ export function QrScanner() {
           {result.message}
         </p>
       )}
+
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (!manualToken.trim()) return;
+          await handleToken(manualToken.trim());
+          setManualToken("");
+        }}
+        className="flex gap-2"
+      >
+        <input
+          value={manualToken}
+          onChange={(e) => setManualToken(e.target.value)}
+          placeholder="카메라가 안 되면 QR 토큰을 직접 입력"
+          className="flex-1 rounded-sm border border-rivet px-2 py-1 font-mono text-sm"
+        />
+        <button disabled={pending} className={`${btnSteel} disabled:opacity-50`}>
+          확인
+        </button>
+      </form>
     </div>
   );
 }
