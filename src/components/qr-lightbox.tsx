@@ -120,7 +120,14 @@ export function QrLightbox({ token, alt }: { token: string; alt: string }) {
                   Meal Ticket · Check-in QR
                 </p>
 
-                <div className="qr-glow relative overflow-hidden rounded-sm border border-rivet-line bg-white p-4">
+                <div className="qr-glow relative w-full overflow-hidden rounded-sm border border-rivet-line bg-white p-4">
+                  {/* `w-full` on the wrapper above gives this canvas's `w-full`
+                      a definite percentage base. Without it, this box sits in
+                      a `justify-center` flex column with no explicit width of
+                      its own, so the canvas's percentage width has nothing
+                      definite to resolve against — some mobile browsers then
+                      fall back to the canvas's raw pixel resolution (640px),
+                      rendering it stretched way past the card. */}
                   <canvas
                     ref={bigRef}
                     width={EXPANDED_SIZE}
