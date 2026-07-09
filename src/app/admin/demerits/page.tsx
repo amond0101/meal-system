@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { getProfile, isAdmin } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
-import { Card, PageTitle, SectionLabel } from "@/components/ui";
+import { Card, PageTitle, SectionLabel, btnDanger } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
+import { deleteDemerit } from "./actions";
 
 export default async function DemeritsAdminPage() {
   const profile = await getProfile();
@@ -69,6 +71,7 @@ export default async function DemeritsAdminPage() {
               <th className="py-2">학생</th>
               <th className="py-2">사유</th>
               <th className="py-2">점수</th>
+              <th className="py-2">관리자</th>
             </tr>
           </thead>
           <tbody>
@@ -80,11 +83,18 @@ export default async function DemeritsAdminPage() {
                 </td>
                 <td className="py-2">{d.reason}</td>
                 <td className="py-2 font-mono">{d.points}점</td>
+                <td className="py-2">
+                  <form action={deleteDemerit.bind(null, d.id)}>
+                    <SubmitButton className={btnDanger} pendingText="취소 중…">
+                      취소
+                    </SubmitButton>
+                  </form>
+                </td>
               </tr>
             ))}
             {demerits?.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-2 text-ink-soft">
+                <td colSpan={5} className="py-2 text-ink-soft">
                   벌점 기록이 없습니다.
                 </td>
               </tr>

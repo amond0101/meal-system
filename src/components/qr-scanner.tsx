@@ -227,8 +227,12 @@ export function QrScanner() {
     if (!isFullscreen || !box) return;
 
     function updateScale() {
-      const available = Math.min(window.innerWidth, window.innerHeight) * 0.92;
-      const scale = Math.max(available / BOX_SIZE, 1);
+      // Use the LARGER viewport dimension (not the smaller one) so the
+      // square box scales up until it covers the whole screen edge-to-edge,
+      // like a real fullscreen camera view — the excess on the other axis
+      // overflows and gets clipped by the stage's overflow-hidden instead of
+      // leaving black letterbox bars around a smaller centered square.
+      const scale = Math.max(window.innerWidth, window.innerHeight) / BOX_SIZE;
       box!.style.transform = `scale(${scale})`;
     }
 
@@ -254,7 +258,7 @@ export function QrScanner() {
     <div
       className={
         isFullscreen
-          ? "fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black p-3"
+          ? "fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-black"
           : "flex flex-col gap-4"
       }
     >
