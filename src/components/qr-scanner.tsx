@@ -9,6 +9,11 @@ type Feedback = "success" | "error" | null;
 
 const READER_ELEMENT_ID = "qr-reader";
 
+// The camera preview box always stays exactly this size (in CSS pixels),
+// no matter what — see the fullscreen zoom comment on toggleFullscreen()
+// below for why that matters.
+const BOX_SIZE = 300;
+
 function describeCameraError(err: unknown): string {
   const name = err instanceof DOMException ? err.name : undefined;
 
@@ -72,7 +77,7 @@ function ExitFullscreenIcon() {
 }
 
 export function QrScanner() {
-  const rootRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const lastScan = useRef<{ token: string; time: number } | null>(null);
@@ -133,13 +138,8 @@ export function QrScanner() {
     } catch {}
   }
 
-  // Forces the injected <video> to fill the (square) container instead of
-  // keeping the fixed pixel width html5-qrcode assigns it. This runs
-  // synchronously right after start() resolves, which is reliably before the
-  // video's "playing" event — the point where the library reads the video's
-  // rendered size to compute the scan box — so the scan box ends up aligned
-  // with a square viewfinder instead of the video's native (often landscape)
-  // camera aspect ratio.
+  // Forces the injected <video> to fill the container instead of keeping the
+  // fixed pixel width html5-qrcode assigns it.
   function fillVideoElement() {
     const video = containerRef.current?.querySelector("video");
     if (!video) return;
@@ -206,53 +206,41 @@ export function QrScanner() {
     }
   }
 
-  // html5-qrcode computes the scan box, shading overlay, and internal sample
-  // canvas ONCE, from the container's size at start() time, and never
-  // recalculates them later. If we only change CSS on fullscreen toggle
-  // without restarting, those internal overlays stay sized for the OLD
-  // (small, square) box while the video itself balloons to fill the screen —
-  // which is exactly what looked like "a small box popup" floating inside
-  // the fullscreen view, and made scans stop registering (so no result text
-  // ever appeared). Restarting recomputes everything for the new size.
-  //
-  // This does NOT show a new browser permission prompt: getUserMedia only
-  // asks again if permission was actually revoked. Once granted, repeat
-  // calls resolve immediately — restarting just briefly cycles the camera
-  // hardware while the box is recalculated.
-  async function toggleFullscreen() {
-    const next = !isFullscreen;
-    const wasActive = cameraState === "active";
-
-    if (wasActive) {
-      await stopScanner();
-      setCameraState("idle");
-    }
-
-    setIsFullscreen(next);
-
-    try {
-      if (next) {
-        await rootRef.current?.requestFullscreen?.();
-      } else if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      }
-    } catch {}
-
-    if (wasActive) {
-      // Let the fullscreen layout/paint settle before re-measuring the
-      // container, otherwise the scan box gets computed from the
-      // pre-transition size.
-      setTimeout(() => void startScanner(), 100);
-    }
+  // "Fullscreen" is done with a pure CSS transform: scale(...) on the preview
+  // box, NOT by resizing it and NOT via the native Fullscreen API. This is
+  // deliberate: html5-qrcode measures the box's clientWidth/clientHeight once
+  // at start() and bakes that into its scan-box math for the rest of the
+  // session. A CSS transform changes how big the box is painted on screen
+  // but never changes its actual clientWidth/clientHeight — so from the
+  // library's point of view nothing ever resizes, the running camera is
+  // never touched, and the browser is never asked for permission a second
+  // time. The whole box (video, checkmark, result text) simply gets
+  // visually bigger together.
+  function toggleFullscreen() {
+    setIsFullscreen((v) => !v);
   }
 
+  // The scale factor is applied imperatively (not via React state) so window
+  // resizes/rotations don't trigger re-renders — it's a purely visual value.
   useEffect(() => {
-    function onFullscreenChange() {
-      if (!document.fullscreenElement) setIsFullscreen(false);
+    const box = boxRef.current;
+    if (!isFullscreen || !box) return;
+
+    function updateScale() {
+      const available = Math.min(window.innerWidth, window.innerHeight) * 0.92;
+      const scale = Math.max(available / BOX_SIZE, 1);
+      box!.style.transform = `scale(${scale})`;
     }
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
-  }, []);
+
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    window.addEventListener("orientationchange", updateScale);
+    return () => {
+      window.removeEventListener("resize", updateScale);
+      window.removeEventListener("orientationchange", updateScale);
+      box.style.transform = "";
+    };
+  }, [isFullscreen]);
 
   useEffect(() => {
     return () => {
@@ -264,85 +252,93 @@ export function QrScanner() {
 
   return (
     <div
-      ref={rootRef}
-      className={isFullscreen ? "fixed inset-0 z-50 flex flex-col gap-3 bg-black p-3" : "flex flex-col gap-4"}
+      className={
+        isFullscreen
+          ? "fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black p-3"
+          : "flex flex-col gap-4"
+      }
     >
-      <div className={isFullscreen ? "flex flex-1 flex-col" : ""}>
-        {!isFullscreen && (
+      {!isFullscreen && (
+        <>
           <p className="text-sm text-ink-soft">버튼을 누르면 브라우저가 카메라 권한을 물어봅니다. 허용하면 바로 촬영 화면이 켜집니다.</p>
-        )}
 
-        {cameraState !== "active" && (
-          <button
-            type="button"
-            onClick={() => void startScanner()}
-            disabled={cameraState === "requesting"}
-            className={`${btnPrimary} mt-3 disabled:opacity-50`}
-          >
-            {cameraState === "requesting" ? "카메라 권한 요청 중…" : "카메라 켜기"}
-          </button>
-        )}
-
-        {/* Fixed aspect-square preview when embedded in the page; fills the
-            remaining space when in fullscreen. Result/pending text and the
-            fullscreen toggle live as absolutely-positioned overlays inside
-            this box so their appearing/disappearing never changes the box's
-            own size (that was what caused the camera view to keep
-            growing/shrinking). */}
-        <div
-          className={
-            isFullscreen
-              ? "relative mt-3 w-full flex-1 overflow-hidden rounded-sm border border-white/10 bg-black"
-              : "relative mx-auto mt-3 aspect-square w-full max-w-sm overflow-hidden rounded-sm border border-rivet bg-black/5"
-          }
-        >
-          <div id={READER_ELEMENT_ID} ref={containerRef} className="h-full w-full [&_video]:block" />
+          {cameraState !== "active" && (
+            <button
+              type="button"
+              onClick={() => void startScanner()}
+              disabled={cameraState === "requesting"}
+              className={`${btnPrimary} disabled:opacity-50`}
+            >
+              {cameraState === "requesting" ? "카메라 권한 요청 중…" : "카메라 켜기"}
+            </button>
+          )}
 
           {cameraState === "active" && (
             <button
               type="button"
-              onClick={() => void toggleFullscreen()}
-              aria-label={isFullscreen ? "전체화면 종료" : "전체화면으로 보기"}
-              className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+              onClick={toggleFullscreen}
+              className="flex w-fit items-center gap-2 rounded-sm border border-rivet px-3 py-1.5 text-sm text-ink hover:bg-paper"
             >
-              {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
+              <EnterFullscreenIcon />
+              전체화면으로 보기
             </button>
           )}
+        </>
+      )}
 
-          {feedback && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div
-                className={`flex h-24 w-24 items-center justify-center rounded-full text-white shadow-lg ${
-                  feedback === "success" ? "bg-success/90" : "bg-danger/90"
+      {/* This box's own width/height NEVER change (see toggleFullscreen) —
+          only the transform scaling it up does. */}
+      <div
+        ref={boxRef}
+        style={{ width: BOX_SIZE, height: BOX_SIZE }}
+        className="relative mx-auto overflow-hidden rounded-sm border border-rivet bg-black/5"
+      >
+        <div id={READER_ELEMENT_ID} ref={containerRef} className="h-full w-full [&_video]:block" />
+
+        {feedback && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div
+              className={`flex h-24 w-24 items-center justify-center rounded-full text-white shadow-lg ${
+                feedback === "success" ? "bg-success/90" : "bg-danger/90"
+              }`}
+            >
+              {feedback === "success" ? <CheckIcon /> : <XIcon />}
+            </div>
+          </div>
+        )}
+
+        {(pending || result) && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-[14%] flex flex-col items-center gap-2 px-4">
+            {pending && (
+              <p className="rounded-sm bg-black/70 px-4 py-2.5 text-center text-base font-semibold text-white shadow-lg">
+                체크인 처리 중...
+              </p>
+            )}
+            {!pending && result && (
+              <p
+                className={`rounded-sm px-4 py-2.5 text-center text-base font-semibold text-white shadow-lg ${
+                  result.ok ? "bg-success/90" : "bg-danger/90"
                 }`}
               >
-                {feedback === "success" ? <CheckIcon /> : <XIcon />}
-              </div>
-            </div>
-          )}
-
-          {(pending || result) && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-[14%] flex flex-col items-center gap-2 px-4">
-              {pending && (
-                <p className="rounded-sm bg-black/70 px-4 py-2.5 text-center text-base font-semibold text-white shadow-lg">
-                  체크인 처리 중...
-                </p>
-              )}
-              {!pending && result && (
-                <p
-                  className={`rounded-sm px-4 py-2.5 text-center text-base font-semibold text-white shadow-lg ${
-                    result.ok ? "bg-success/90" : "bg-danger/90"
-                  }`}
-                >
-                  {result.message}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+                {result.message}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      {errorMessage && (
+      {isFullscreen && (
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          aria-label="전체화면 종료"
+          className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+        >
+          <ExitFullscreenIcon />
+        </button>
+      )}
+
+      {!isFullscreen && errorMessage && (
         <p className="rounded-sm border border-danger bg-danger/10 px-3 py-2 text-sm text-danger">{errorMessage}</p>
       )}
     </div>
