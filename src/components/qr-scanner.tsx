@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { checkInToken } from "@/app/checkin/actions";
-import { btnOutline, btnPrimary } from "@/components/ui";
+import { btnPrimary } from "@/components/ui";
 
 type CameraState = "idle" | "requesting" | "active" | "error";
 type Feedback = "success" | "error" | null;
@@ -43,6 +43,34 @@ function XIcon() {
   );
 }
 
+// Standard "enter fullscreen" glyph (four arrows pointing outward to the
+// corners) — the same shape used by YouTube's and most video players'
+// fullscreen button.
+function EnterFullscreenIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
+      />
+    </svg>
+  );
+}
+
+// "Exit fullscreen" glyph — same four arrows, pointing inward instead.
+function ExitFullscreenIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"
+      />
+    </svg>
+  );
+}
+
 export function QrScanner() {
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -77,7 +105,7 @@ export function QrScanner() {
 
     // Flash a big check/x mark over the camera view so an admin scanning many
     // students in a row gets an immediate glance-able result, separate from
-    // the persistent text message below.
+    // the persistent text message below it.
     setFeedback(res.ok ? "success" : "error");
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
     feedbackTimeout.current = setTimeout(() => setFeedback(null), 1400);
@@ -99,9 +127,13 @@ export function QrScanner() {
     } catch {}
   }
 
-  // Fills the container with the injected <video>. html5-qrcode sets a fixed
-  // pixel width on the video element based on the container's width at start
-  // time — force it to visually fill the box on every screen size instead.
+  // Forces the injected <video> to fill the (square) container instead of
+  // keeping the fixed pixel width html5-qrcode assigns it. This runs
+  // synchronously right after start() resolves, which is reliably before the
+  // video's "playing" event — the point where the library reads the video's
+  // rendered size to compute the scan box — so the scan box ends up aligned
+  // with a square viewfinder instead of the video's native (often landscape)
+  // camera aspect ratio.
   function fillVideoElement() {
     const video = containerRef.current?.querySelector("video");
     if (!video) return;
@@ -141,8 +173,14 @@ export function QrScanner() {
         { facingMode: "environment" },
         {
           fps: 10,
+          // Nearly fill the (square) viewfinder, leaving only a thin margin.
+          // Besides making the scan target bigger, keeping the margin under
+          // ~11px also makes html5-qrcode skip its corner "match" brackets —
+          // those are what were flashing green/white every frame depending on
+          // whether that single frame happened to decode successfully.
           qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7);
+            const dimension = Math.min(viewfinderWidth, viewfinderHeight);
+            const size = Math.max(dimension - 8, 50);
             return { width: size, height: size };
           },
           disableFlip: true,
@@ -208,49 +246,49 @@ export function QrScanner() {
   return (
     <div
       ref={rootRef}
-      className={
-        isFullscreen
-          ? "fixed inset-0 z-50 flex flex-col gap-3 bg-black p-3"
-          : "flex flex-col gap-4"
-      }
+      className={isFullscreen ? "fixed inset-0 z-50 flex flex-col gap-3 bg-black p-3" : "flex flex-col gap-4"}
     >
       <div className={isFullscreen ? "flex flex-1 flex-col" : ""}>
         {!isFullscreen && (
           <p className="text-sm text-ink-soft">버튼을 누르면 브라우저가 카메라 권한을 물어봅니다. 허용하면 바로 촬영 화면이 켜집니다.</p>
         )}
 
-        <div className={`flex flex-wrap items-center gap-2 ${isFullscreen ? "mb-3" : "mt-3"}`}>
-          {cameraState !== "active" && (
-            <button
-              type="button"
-              onClick={() => void startScanner()}
-              disabled={cameraState === "requesting"}
-              className={`${btnPrimary} disabled:opacity-50`}
-            >
-              {cameraState === "requesting" ? "카메라 권한 요청 중…" : "카메라 켜기"}
-            </button>
-          )}
+        {cameraState !== "active" && (
+          <button
+            type="button"
+            onClick={() => void startScanner()}
+            disabled={cameraState === "requesting"}
+            className={`${btnPrimary} mt-3 disabled:opacity-50`}
+          >
+            {cameraState === "requesting" ? "카메라 권한 요청 중…" : "카메라 켜기"}
+          </button>
+        )}
 
-          {cameraState === "active" && (
-            <button type="button" onClick={() => void toggleFullscreen()} className={btnOutline}>
-              {isFullscreen ? "전체화면 종료" : "전체화면으로 보기"}
-            </button>
-          )}
-        </div>
-
+        {/* Fixed aspect-square preview when embedded in the page; fills the
+            remaining space when in fullscreen. Result/pending text and the
+            fullscreen toggle live as absolutely-positioned overlays inside
+            this box so their appearing/disappearing never changes the box's
+            own size (that was what caused the camera view to keep
+            growing/shrinking). */}
         <div
           className={
             isFullscreen
-              ? "relative mx-auto w-full max-w-none flex-1 overflow-hidden rounded-sm border border-white/10 bg-black"
-              : "relative mx-auto mt-3 w-full max-w-sm overflow-hidden rounded-sm border border-rivet bg-black/5"
+              ? "relative mt-3 w-full flex-1 overflow-hidden rounded-sm border border-white/10 bg-black"
+              : "relative mx-auto mt-3 aspect-square w-full max-w-sm overflow-hidden rounded-sm border border-rivet bg-black/5"
           }
         >
-          <div
-            id={READER_ELEMENT_ID}
-            ref={containerRef}
-            style={{ minHeight: cameraState === "active" ? (isFullscreen ? "100%" : 320) : 0 }}
-            className="h-full w-full empty:border-0 empty:bg-transparent [&_video]:block"
-          />
+          <div id={READER_ELEMENT_ID} ref={containerRef} className="h-full w-full [&_video]:block" />
+
+          {cameraState === "active" && (
+            <button
+              type="button"
+              onClick={() => void toggleFullscreen()}
+              aria-label={isFullscreen ? "전체화면 종료" : "전체화면으로 보기"}
+              className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+            >
+              {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
+            </button>
+          )}
 
           {feedback && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -263,23 +301,28 @@ export function QrScanner() {
               </div>
             </div>
           )}
+
+          {(pending || result) && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3">
+              {pending && (
+                <p className="rounded-sm bg-black/70 px-3 py-2 text-center text-sm text-white shadow-lg">체크인 처리 중...</p>
+              )}
+              {!pending && result && (
+                <p
+                  className={`rounded-sm px-3 py-2 text-center text-sm text-white shadow-lg ${
+                    result.ok ? "bg-success/90" : "bg-danger/90"
+                  }`}
+                >
+                  {result.message}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {errorMessage && (
         <p className="rounded-sm border border-danger bg-danger/10 px-3 py-2 text-sm text-danger">{errorMessage}</p>
-      )}
-
-      {pending && <p className="rounded-sm border border-rivet bg-paper px-3 py-2 text-sm text-ink-soft">체크인 처리 중...</p>}
-
-      {result && (
-        <p
-          className={`rounded-sm border px-3 py-2 text-sm ${
-            result.ok ? "border-success bg-success/10 text-success" : "border-danger bg-danger/10 text-danger"
-          }`}
-        >
-          {result.message}
-        </p>
       )}
     </div>
   );
