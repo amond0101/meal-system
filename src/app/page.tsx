@@ -80,15 +80,7 @@ export default async function Home() {
             <p className="text-sm text-ink-soft">예정된 수요석식이 없습니다.</p>
           )}
           <Link href="/apply" className="mt-3 inline-block text-sm text-steel underline underline-offset-2">
-            신청하러 가기 →
-          </Link>
-        </Card>
-
-        <Card>
-          <SectionLabel>신청확인</SectionLabel>
-          <p className="text-sm text-ink-soft">내 신청 내역과 QR 코드, 누적 벌점을 확인하세요.</p>
-          <Link href="/my" className="mt-3 inline-block text-sm text-steel underline underline-offset-2">
-            신청확인 보기 →
+            신청 / 신청확인·QR 보기 →
           </Link>
         </Card>
 

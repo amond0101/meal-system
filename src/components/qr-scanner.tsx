@@ -206,14 +206,28 @@ export function QrScanner() {
     }
   }
 
-  // Toggling fullscreen only changes CSS layout — the running camera stream
-  // is left untouched (no stop/restart), so the browser never re-prompts for
-  // camera permission after the first grant. The video is already forced to
-  // width/height 100% (see fillVideoElement), so it fills whichever box CSS
-  // gives it; the scan box may momentarily be a little off from the exact
-  // native crop right after resizing, but no new getUserMedia call happens.
+  // html5-qrcode computes the scan box, shading overlay, and internal sample
+  // canvas ONCE, from the container's size at start() time, and never
+  // recalculates them later. If we only change CSS on fullscreen toggle
+  // without restarting, those internal overlays stay sized for the OLD
+  // (small, square) box while the video itself balloons to fill the screen —
+  // which is exactly what looked like "a small box popup" floating inside
+  // the fullscreen view, and made scans stop registering (so no result text
+  // ever appeared). Restarting recomputes everything for the new size.
+  //
+  // This does NOT show a new browser permission prompt: getUserMedia only
+  // asks again if permission was actually revoked. Once granted, repeat
+  // calls resolve immediately — restarting just briefly cycles the camera
+  // hardware while the box is recalculated.
   async function toggleFullscreen() {
     const next = !isFullscreen;
+    const wasActive = cameraState === "active";
+
+    if (wasActive) {
+      await stopScanner();
+      setCameraState("idle");
+    }
+
     setIsFullscreen(next);
 
     try {
@@ -223,6 +237,13 @@ export function QrScanner() {
         await document.exitFullscreen();
       }
     } catch {}
+
+    if (wasActive) {
+      // Let the fullscreen layout/paint settle before re-measuring the
+      // container, otherwise the scan box gets computed from the
+      // pre-transition size.
+      setTimeout(() => void startScanner(), 100);
+    }
   }
 
   useEffect(() => {

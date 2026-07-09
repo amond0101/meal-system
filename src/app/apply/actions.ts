@@ -39,7 +39,6 @@ export async function applyToDinner(dinnerId: string) {
 
   revalidatePath("/apply");
   revalidatePath("/");
-  revalidatePath("/my");
 }
 
 // Students normally cannot cancel once applied (see /apply page copy). This
@@ -69,5 +68,4 @@ export async function cancelApplication(applicationId: string) {
 
   revalidatePath("/apply");
   revalidatePath("/");
-  revalidatePath("/my");
 }

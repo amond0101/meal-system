@@ -31,13 +31,10 @@ export async function SiteHeader() {
           </div>
           <nav className="flex flex-wrap items-center gap-4 font-display text-sm uppercase tracking-wide text-white/80">
             <Link href="/apply" className="hover:text-safety">
-              신청
+              신청 · 신청확인
             </Link>
             <Link href="/checkin" className="hover:text-safety">
               급식확인
-            </Link>
-            <Link href="/my" className="hover:text-safety">
-              신청확인
             </Link>
             {admin && (
               <Link href="/admin" className="hover:text-safety">
