@@ -51,18 +51,18 @@ export default async function CheckinScanPage() {
       </Card>
 
       {!dinner ? (
-        <p className="text-sm text-ink-soft">오늘은 등록된 수요석식 회차가 없습니다.</p>
+        <p className="mb-6 text-sm text-ink-soft">
+          오늘은 등록된 수요석식 회차가 없습니다. 카메라는 켤 수 있지만, 오늘 회차가 없는 QR은 체크인 시 거부됩니다.
+        </p>
       ) : (
-        <>
-          <div className="mb-6 grid grid-cols-3 gap-3">
-            <CounterDigit value={stats.checked_in} label="체크인" />
-            <CounterDigit value={stats.applied} label="대기중" />
-            <CounterDigit value={stats.applied + stats.checked_in} label="전체 신청" />
-          </div>
-
-          <QrScanner />
-        </>
+        <div className="mb-6 grid grid-cols-3 gap-3">
+          <CounterDigit value={stats.checked_in} label="체크인" />
+          <CounterDigit value={stats.applied} label="대기중" />
+          <CounterDigit value={stats.applied + stats.checked_in} label="전체 신청" />
+        </div>
       )}
+
+      <QrScanner />
     </div>
   );
 }
